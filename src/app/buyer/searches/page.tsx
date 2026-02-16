@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SavedSearchesPage } from "@/features/buyer";
+import SavedSearchesPage from "@/features/buyer/pages/SavedSearchesPage";
 
 export const metadata: Metadata = {
   title: "Saved Searches",
