@@ -76,6 +76,7 @@ const PropertyCard = ({
         )}
         <motion.button
           onClick={() => setFavorite(!favorite)}
+          aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
           className="absolute top-3 right-3 p-2 bg-white/90 rounded-full z-10"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}

@@ -1,73 +1,98 @@
-# Welcome to your Lovable project
+# PropSpace X — Enterprise Real Estate Platform
 
-## Project info
+A modern, enterprise-grade real estate platform connecting buyers and agents with verified, transparent listings. Built with **Next.js 14**, **TypeScript**, **Tailwind CSS**, and **shadcn/ui**.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Tech Stack
 
-## How can I edit this code?
+| Layer         | Technology                                         |
+| ------------- | -------------------------------------------------- |
+| Framework     | [Next.js 14](https://nextjs.org) (App Router)      |
+| Language      | TypeScript 5                                       |
+| Styling       | Tailwind CSS 3 + CSS variables (light / dark)      |
+| UI Components | [shadcn/ui](https://ui.shadcn.com)                 |
+| Animations    | [Framer Motion](https://www.framer.com/motion/)    |
+| Charts        | [Recharts](https://recharts.org)                   |
+| State / Data  | [TanStack React Query](https://tanstack.com/query) |
+| Forms         | React Hook Form + Zod validation                   |
+| Theming       | next-themes (system / light / dark)                |
 
-There are several ways of editing your application.
+## Getting Started
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Node.js** ≥ 18 — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **npm** ≥ 9
 
-Changes made via Lovable will be committed automatically to this repo.
+### Installation
 
-**Use your preferred IDE**
+```bash
+# 1. Clone the repository
+git clone https://github.com/fredrickray/propspacex-web.git
+cd propspacex-web
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 2. Create your local environment file
+cp .env.example .env.local
+# Then edit .env.local with your values
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# 3. Install dependencies
+npm install
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Start the dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be running at [http://localhost:3000](http://localhost:3000).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Available Scripts
 
-**Use GitHub Codespaces**
+| Command         | Description                       |
+| --------------- | --------------------------------- |
+| `npm run dev`   | Start development server          |
+| `npm run build` | Create optimised production build |
+| `npm run start` | Serve production build locally    |
+| `npm run lint`  | Run ESLint                        |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── layout.tsx          # Root layout (font, providers, metadata)
+│   ├── page.tsx            # Landing page
+│   ├── auth/               # Authentication routes
+│   ├── admin/              # Admin dashboard routes
+│   └── buyer/              # Buyer portal routes
+├── components/
+│   ├── ui/                 # shadcn/ui primitives
+│   ├── shared/             # Shared composite components
+│   ├── icons/              # SVG icon components
+│   ├── Header.tsx          # Site header & navigation
+│   ├── Footer.tsx          # Site footer
+│   └── ...                 # Landing page sections
+├── features/
+│   ├── admin/              # Admin feature (layouts, pages, components)
+│   ├── auth/               # Auth feature (layouts, pages, components)
+│   └── buyer/              # Buyer feature (layouts, pages, components)
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utilities (cn, queryClient, etc.)
+└── middleware.ts           # Auth route protection
+```
 
-This project is built with:
+## Key Features
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Role-based dashboards** — Admin moderation panel & buyer portal
+- **Route protection** — Middleware-based auth guarding `/admin` and `/buyer`
+- **Responsive design** — Mobile-first with Tailwind breakpoints
+- **Dark mode** — System-aware theme switching via next-themes
+- **Optimised images** — `next/image` with remote pattern allowlisting
+- **Security headers** — X-Frame-Options, CSP, Referrer-Policy via `next.config.js`
+- **SEO metadata** — Per-page titles & descriptions with template inheritance
+- **Loading & error states** — Skeleton loaders and error boundaries per route segment
 
-## How can I deploy this project?
+## Environment Variables
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+See [`.env.example`](.env.example) for all available configuration options.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Private — all rights reserved.
