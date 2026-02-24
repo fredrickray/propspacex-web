@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PropertySearchPage } from "@/features/buyer";
+import PropertySearchPage from "@/features/buyer/pages/PropertySearchPage";
 
 export const metadata: Metadata = {
   title: "Search Properties",

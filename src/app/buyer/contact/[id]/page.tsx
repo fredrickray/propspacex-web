@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ContactAgentPage } from "@/features/buyer";
+import ContactAgentPage from "@/features/buyer/pages/ContactAgentPage";
 
 export async function generateMetadata({
   params,

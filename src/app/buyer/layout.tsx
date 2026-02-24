@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BuyerLayout } from "@/features/buyer";
+import BuyerLayout from "@/features/buyer/components/BuyerLayout";
 
 export const metadata: Metadata = {
   title: {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PropertyModerationPage } from "@/features/admin";
+import { PropertyModerationPage } from "@/features/admin/pages/PropertyModerationPage";
 
 export const metadata: Metadata = {
   title: "Property Moderation",
