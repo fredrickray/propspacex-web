@@ -10,7 +10,10 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "PropSpace X - Enterprise Real Estate Platform",
+  title: {
+    template: "%s | PropSpace X",
+    default: "PropSpace X - Enterprise Real Estate Platform",
+  },
   description:
     "The enterprise platform connecting buyers and agents with verified, transparent blockchain-backed real estate listings.",
   openGraph: {

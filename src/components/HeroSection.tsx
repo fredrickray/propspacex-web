@@ -94,7 +94,10 @@ const HeroSection = () => {
                 Type
               </label>
               <div className="relative">
-                <select className="w-full bg-background rounded-lg border-none focus:ring-1 focus:ring-primary h-12 pl-3 pr-10 text-foreground text-base appearance-none cursor-pointer">
+                <select
+                  aria-label="Property type"
+                  className="w-full bg-background rounded-lg border-none focus:ring-1 focus:ring-primary h-12 pl-3 pr-10 text-foreground text-base appearance-none cursor-pointer"
+                >
                   <option>All Types</option>
                   <option>House</option>
                   <option>Condo</option>
