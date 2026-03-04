@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Lock, Fingerprint, Shield, Wallet } from "lucide-react";
 import {
   AuthLayout,
@@ -14,17 +17,57 @@ import {
   AuthFooter,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { api, AppRole } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { loginSchema, type LoginFormData } from "../validations";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    // Simulate login
-    setTimeout(() => setIsLoading(false), 2000);
+
+    try {
+      const { user } = await api.signin(data.email, data.password);
+
+      toast({
+        title: "Welcome back!",
+        description: `Signed in as ${user.email}`,
+      });
+
+      // Role-based redirect
+      if (user.appRole === AppRole.Buyer) {
+        router.push("/buyer");
+      } else {
+        // Agent/Seller screens not yet built — go to home for now
+        console.log('user role:', user.appRole)
+        console.log('Agent/Seller screens not yet built — go to home for now')
+        router.push("/");
+      }
+    } catch (err) {
+      console.log('Error logging in:', err)
+      const message =
+        err instanceof Error ? err.message : "Login failed. Please try again.";
+      setError("root", { message });
+      toast({
+        title: "Sign in failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -86,14 +129,21 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {errors.root && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+                  {errors.root.message}
+                </div>
+              )}
+
               <AuthInput
                 label="Email Address"
                 type="email"
                 placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
+                error={errors.email?.message}
                 rightElement={<Mail className="size-5 text-muted-foreground" />}
+                disabled={isLoading}
               />
 
               <div>
@@ -111,8 +161,9 @@ const LoginPage = () => {
                 <AuthInput
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register("password")}
+                  error={errors.password?.message}
+                  disabled={isLoading}
                 />
               </div>
 

@@ -1,12 +1,14 @@
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:9099/api/v1";
 
-interface User {
-  id: string;
+export interface User {
+  userId: string;
   email: string;
-  username: string;
-  full_name: string;
-  role: AppRole;
-  is_active: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  appRole: AppRole;
+  isVerified: boolean;
 }
 
 interface Property {
@@ -85,10 +87,18 @@ enum Currency {
   USDT = "USDT",
 }
 
-enum AppRole {
+export enum AppRole {
+  Admin = "admin",
   Buyer = "buyer",
-  Seller = "seller",
   Agent = "agent",
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  accessToken: string;
+  refreshToken: string;
+  user: User;
 }
 
 class ApiClient {
@@ -119,32 +129,30 @@ class ApiClient {
     if (response.status === 401) {
       localStorage.removeItem("propspacex_token");
       localStorage.removeItem("propspacex_user");
-      window.location.href = "/login";
+      window.location.href = "/auth/login";
       throw new Error("Unauthorized");
     }
 
     if (!response.ok) {
       const error = await response
         .json()
-        .catch(() => ({ detail: "Request failed" }));
-      throw new Error(error.detail || "Request failed");
+        .catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || error.detail || "Request failed");
     }
 
     return response.json();
   }
 
-  async signin(email: string, password: string): Promise<User> {
-    const data = await this.request<{ token: string; user: User }>(
-      "/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      },
-    );
+  async signin(email: string, password: string): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>("/auth/signin", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-    localStorage.setItem("propspacex_token", data.token);
-    localStorage.setItem("propspacex_user", JSON.stringify(data.user));
-    return data.user;
+    console.log('Api response:', response);
+    localStorage.setItem("propspacex_token", response.accessToken);
+    localStorage.setItem("propspacex_user", JSON.stringify(response.user));
+    return response;
   }
 
   async signup(
@@ -183,7 +191,7 @@ class ApiClient {
   signout() {
     localStorage.removeItem("propspacex_token");
     localStorage.removeItem("propspacex_user");
-    window.location.href = "/login";
+    window.location.href = "/auth/login";
   }
 
   getProfile(): User | null {
@@ -262,7 +270,7 @@ class ApiClient {
     if (response.status === 401) {
       localStorage.removeItem("propspacex_token");
       localStorage.removeItem("propspacex_user");
-      window.location.href = "/login";
+      window.location.href = "/auth/login";
       throw new Error("Unauthorized");
     }
 
