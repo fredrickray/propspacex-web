@@ -13,18 +13,64 @@ import {
   UserTypeToggle,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { signupSchema, type SignupFormData } from "../validations";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const RegisterPage = () => {
-  const [userType, setUserType] = useState<"buyer" | "agent">("buyer");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      appRole: "buyer",
+    },
+  });
+
+  const userType = watch("appRole");
+
+  const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 2000);
+
+    try {
+      const response = await api.signup(
+        data.email,
+        data.password,
+        data.firstName,
+        data.lastName,
+        data.appRole,
+      );
+
+      toast({
+        title: "Account created!",
+        description: response.message || "Please check your email for verification code.",
+      });
+
+      router.push(`/auth/verify-email?email=${encodeURIComponent(data.email)}`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Registration failed. Please try again.";
+      setError("root", { message });
+      toast({
+        title: "Registration failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,31 +128,52 @@ const RegisterPage = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <UserTypeToggle value={userType} onChange={setUserType} />
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {errors.root && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                  {errors.root.message}
+                </div>
+              )}
+
+              <UserTypeToggle
+                value={userType}
+                onChange={(value) => setValue("appRole", value)}
+              />
 
               <AuthInput
-                label="Full Name"
+                label="First Name"
                 type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John"
+                {...register("firstName")}
+                error={errors.firstName?.message}
+                disabled={isLoading}
+              />
+
+              <AuthInput
+                label="Last Name"
+                type="text"
+                placeholder="Doe"
+                {...register("lastName")}
+                error={errors.lastName?.message}
+                disabled={isLoading}
               />
 
               <AuthInput
                 label="Professional Email"
                 type="email"
                 placeholder="john@enterprise.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
+                error={errors.email?.message}
+                disabled={isLoading}
               />
 
               <AuthInput
-                label="Secure Password"
+                label="Password"
                 type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="************"
+                {...register("password")}
+                error={errors.password?.message}
+                disabled={isLoading}
               />
 
               <AuthButton type="submit" isLoading={isLoading}>
