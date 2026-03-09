@@ -109,6 +109,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
+    { skipAuthRedirect = false } = {},
   ): Promise<T> {
     const token = this.getToken();
 
@@ -126,7 +127,7 @@ class ApiClient {
       headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && !skipAuthRedirect) {
       localStorage.removeItem("propspacex_token");
       localStorage.removeItem("propspacex_user");
       window.location.href = "/auth/login";
@@ -144,12 +145,16 @@ class ApiClient {
   }
 
   async signin(email: string, password: string): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>("/auth/signin", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+    const response = await this.request<AuthResponse>(
+      "/auth/signin",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      },
+      { skipAuthRedirect: true },
+    );
 
-    console.log('Api response:', response);
+    console.log("Api response:", response);
     localStorage.setItem("propspacex_token", response.accessToken);
     localStorage.setItem("propspacex_user", JSON.stringify(response.user));
     return response;
@@ -162,30 +167,42 @@ class ApiClient {
     lastName: string,
     appRole: string,
   ): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>("/auth/signup", {
-      method: "POST",
-      body: JSON.stringify({
-        email,
-        password,
-        firstName,
-        lastName,
-        appRole,
-      }),
-    });
+    return this.request<{ success: boolean; message: string }>(
+      "/auth/signup",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          firstName,
+          lastName,
+          appRole,
+        }),
+      },
+      { skipAuthRedirect: true },
+    );
   }
 
   async verify_otp(email: string, otp: string): Promise<void> {
-    await this.request("/auth/verify-otp", {
-      method: "POST",
-      body: JSON.stringify({ email, otp }),
-    });
+    await this.request(
+      "/auth/verify-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, otp }),
+      },
+      { skipAuthRedirect: true },
+    );
   }
 
   async resend_otp(email: string): Promise<void> {
-    await this.request("/auth/resend-otp", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    });
+    await this.request(
+      "/auth/resend-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      },
+      { skipAuthRedirect: true },
+    );
   }
 
   signout() {
