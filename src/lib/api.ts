@@ -160,16 +160,16 @@ class ApiClient {
     password: string,
     firstName: string,
     lastName: string,
-    appRole: AppRole,
-  ): Promise<User> {
-    return this.request<User>("/auth/signup", {
+    appRole: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/auth/signup", {
       method: "POST",
       body: JSON.stringify({
         email,
         password,
-        first_name: firstName,
-        last_name: lastName,
-        role: appRole,
+        firstName,
+        lastName,
+        appRole,
       }),
     });
   }
