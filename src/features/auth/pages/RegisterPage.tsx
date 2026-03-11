@@ -55,14 +55,18 @@ const RegisterPage = () => {
 
       toast({
         title: "Account created!",
-        description: response.message || "Please check your email for verification code.",
+        description:
+          response.message || "Please check your email for verification code.",
       });
 
       router.push(`/auth/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Registration failed. Please try again.";
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again.";
       setError("root", { message });
+      console.log("Signup error:", err);
       toast({
         title: "Registration failed",
         description: message,
@@ -137,7 +141,10 @@ const RegisterPage = () => {
 
               <UserTypeToggle
                 value={userType}
-                onChange={(value) => setValue("appRole", value)}
+                onChange={(value) => {
+                  console.log("Selected role:", value);
+                  setValue("appRole", value, { shouldValidate: true });
+                }}
               />
 
               <AuthInput

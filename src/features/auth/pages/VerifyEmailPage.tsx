@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, RefreshCw, HelpCircle, Shield, Lock } from "lucide-react";
 import {
   AuthLayout,
@@ -11,14 +14,89 @@ import {
   AuthFooter,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { verifyOtpSchema, type VerifyOtpFormData } from "../validations";
 
 const VerifyEmailPage = () => {
   const [isResending, setIsResending] = useState(false);
-  const email = "d***@domain.com"; // Mock email
+  const [isLoading, setIsLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
 
-  const handleResend = () => {
+  const email = searchParams.get("email") ?? "";
+
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<VerifyOtpFormData>({
+    resolver: zodResolver(verifyOtpSchema),
+    defaultValues: { otp: "" },
+  });
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const onSubmit = async (data: VerifyOtpFormData) => {
+    setIsLoading(true);
+    try {
+      console.log("Verifying OTP for email:", email, "with code:", data.otp);
+      await api.verify_otp(email, data.otp);
+      toast({
+        title: "Email verified!",
+        description: "Your account has been verified. You can now log in.",
+      });
+      router.push("/auth/login");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Please try again.";
+      setError("otp", { message });
+      toast({
+        title: "Verification failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
     setIsResending(true);
-    setTimeout(() => setIsResending(false), 2000);
+    try {
+      await api.resend_otp(email);
+      setCooldown(60);
+      toast({
+        title: "Code resent",
+        description: "A new verification code has been sent to your email.",
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to resend code.";
+      toast({
+        title: "Resend failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -62,7 +140,7 @@ const VerifyEmailPage = () => {
           <AuthCardHeader
             icon={<Mail className="size-8" />}
             title="Verify your email"
-            description="We've sent a verification link to your inbox. Please click the link to confirm your PropSpace account and access the dashboard."
+            description="We've sent a 6-digit verification code to your inbox. Enter it below to confirm your account."
           />
 
           {/* Email Display */}
@@ -70,18 +148,63 @@ const VerifyEmailPage = () => {
             <span className="text-foreground font-medium">{email}</span>
           </div>
 
-          {/* Resend Button */}
-          <AuthButton
-            onClick={handleResend}
-            isLoading={isResending}
-            leftIcon={<RefreshCw className="size-4" />}
-          >
-            Resend Email
-          </AuthButton>
+          {/* OTP Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* OTP Input */}
+            <div className="flex flex-col items-center gap-2">
+              <Controller
+                name="otp"
+                control={control}
+                render={({ field }) => (
+                  <InputOTP
+                    maxLength={6}
+                    value={field.value}
+                    onChange={field.onChange}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                    </InputOTPGroup>
+                    <InputOTPSeparator />
+                    <InputOTPGroup>
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                )}
+              />
+              {errors.otp && (
+                <p className="text-sm text-destructive">{errors.otp.message}</p>
+              )}
+            </div>
 
-          {/* Open Email Hint */}
-          <p className="text-sm text-muted-foreground text-center mt-4">
-            Don't see it? Check your spam folder.
+            {/* Verify Button */}
+            <AuthButton type="submit" isLoading={isSubmitting}>
+              Verify Email
+            </AuthButton>
+          </form>
+
+          {/* Resend Code */}
+          <div className="text-center mt-4">
+            <button
+              onClick={handleResend}
+              disabled={isResending || cooldown > 0}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+            >
+              <RefreshCw
+                className={`size-4 ${isResending ? "animate-spin" : ""}`}
+              />
+              {cooldown > 0
+                ? `Resend code in ${cooldown}s`
+                : "Resend verification code"}
+            </button>
+          </div>
+
+          {/* Hint */}
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            Don&apos;t see it? Check your spam folder.
           </p>
 
           {/* Change Email Link */}
@@ -98,7 +221,7 @@ const VerifyEmailPage = () => {
           <div className="flex items-center justify-center gap-8 mt-8 pt-6 border-t border-border">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Shield className="size-5" />
-              <span className="text-sm">Secure Links</span>
+              <span className="text-sm">Secure Verification</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Lock className="size-5" />
