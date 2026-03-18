@@ -49,14 +49,15 @@ const LoginPage = () => {
       // Role-based redirect
       if (user.appRole === AppRole.Buyer) {
         router.push("/buyer");
+      } else if (user.appRole === AppRole.Agent) {
+        router.push("/agent");
+      } else if (user.appRole === AppRole.Admin) {
+        router.push("/admin");
       } else {
-        // Agent/Seller screens not yet built — go to home for now
-        console.log('user role:', user.appRole)
-        console.log('Agent/Seller screens not yet built — go to home for now')
         router.push("/");
       }
     } catch (err) {
-      console.log('Error logging in:', err)
+      console.log("Error logging in:", err);
       const message =
         err instanceof Error ? err.message : "Login failed. Please try again.";
       setError("root", { message });

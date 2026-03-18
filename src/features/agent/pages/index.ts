@@ -1,0 +1,9 @@
+export { default as DashboardPage } from "./DashboardPage";
+export { default as MyListingsPage } from "./MyListingsPage";
+export { default as AddPropertyBasicInfoPage } from "./AddPropertyBasicInfoPage";
+export { default as AddPropertyLocationPage } from "./AddPropertyLocationPage";
+export { default as AddPropertyDetailsPage } from "./AddPropertyDetailsPage";
+export { default as AddPropertyAmenitiesPage } from "./AddPropertyAmenitiesPage";
+export { default as AddPropertyMediaPage } from "./AddPropertyMediaPage";
+export { default as AddPropertyVerificationPage } from "./AddPropertyVerificationPage";
+export { default as AddPropertyReviewPage } from "./AddPropertyReviewPage";
