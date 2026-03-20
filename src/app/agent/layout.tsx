@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AgentLayout from "@/features/agent/components/AgentLayout";
+import { PropertyCreationProvider } from "../../features/agent/context/PropertyCreationContext";
 
 export const metadata: Metadata = {
   title: {
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AgentLayout>{children}</AgentLayout>;
+  return (
+    <PropertyCreationProvider>
+      <AgentLayout>{children}</AgentLayout>
+    </PropertyCreationProvider>
+  );
 }

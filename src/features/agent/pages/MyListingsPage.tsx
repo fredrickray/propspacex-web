@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Eye,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -27,79 +28,80 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+import {
+  getPropertyId,
+  listingStatusForAgent,
+  normalizePropertyForCard,
+  parsePropertyListEnvelope,
+  type NormalizedPropertyCard,
+} from "@/lib/property-normalize";
 
-const listings = [
-  {
-    image: "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=120",
-    property: "Marina Bay Tower - Unit 1204",
-    type: "Apartment",
-    price: "AED 2,500,000",
-    status: "active",
-    views: 342,
-    inquiries: 18,
-    listed: "Jan 15, 2026",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=120",
-    property: "Palm Jumeirah Villa #8",
-    type: "Villa",
-    price: "AED 12,800,000",
-    status: "active",
-    views: 278,
-    inquiries: 12,
-    listed: "Jan 10, 2026",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=120",
-    property: "Downtown Heights - Penthouse",
-    type: "Penthouse",
-    price: "AED 8,200,000",
-    status: "pending",
-    views: 195,
-    inquiries: 8,
-    listed: "Jan 8, 2026",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=120",
-    property: "Business Bay Studio",
-    type: "Studio",
-    price: "AED 750,000",
-    status: "active",
-    views: 156,
-    inquiries: 5,
-    listed: "Jan 5, 2026",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1494526585095-c41746248156?w=120",
-    property: "JBR 2BR Sea View",
-    type: "Apartment",
-    price: "AED 3,100,000",
-    status: "sold",
-    views: 410,
-    inquiries: 22,
-    listed: "Dec 20, 2025",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=120",
-    property: "Arabian Ranches Villa",
-    type: "Villa",
-    price: "AED 5,600,000",
-    status: "draft",
-    views: 0,
-    inquiries: 0,
-    listed: "Feb 25, 2026",
-  },
-];
-
-const statusVariant = (status: string): "default" | "secondary" | "outline" => {
+const statusVariant = (
+  status: string,
+): "default" | "secondary" | "outline" | "destructive" => {
   if (status === "active") return "default";
   if (status === "pending") return "secondary";
+  if (status === "sold" || status === "rented") return "outline";
+  if (status === "inactive") return "destructive";
   return "outline";
 };
+
+type Row = NormalizedPropertyCard & { agentStatus: string; raw: unknown };
+
+function pickListedDate(raw: unknown): string {
+  if (typeof raw !== "object" || raw === null) return "—";
+  const r = raw as Record<string, unknown>;
+  const d = r.createdAt ?? r.created_at ?? r.updatedAt ?? r.updated_at;
+  if (typeof d === "string") {
+    const t = Date.parse(d);
+    if (!Number.isNaN(t))
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+      }).format(t);
+  }
+  return "—";
+}
 
 const MyListingsPage = () => {
   const { toast } = useToast();
   const [notice, setNotice] = useState<"published" | "preview" | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const raw = await api.getMyProperties(1, 50);
+      const list = parsePropertyListEnvelope(raw);
+      const next: Row[] = [];
+      for (const item of list) {
+        const card = normalizePropertyForCard(item);
+        if (!card) continue;
+        next.push({
+          ...card,
+          agentStatus: listingStatusForAgent(item),
+          raw: item,
+        });
+      }
+      setRows(next);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Failed to load your listings.",
+      );
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -126,6 +128,36 @@ const MyListingsPage = () => {
       window.history.replaceState({}, "", url.pathname);
     }
   }, [toast]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (statusFilter !== "all" && r.agentStatus !== statusFilter)
+        return false;
+      if (!q) return true;
+      return (
+        r.title.toLowerCase().includes(q) ||
+        r.location.toLowerCase().includes(q)
+      );
+    });
+  }, [rows, query, statusFilter]);
+
+  const handleDelete = async (row: Row) => {
+    const pid = getPropertyId(row.raw);
+    if (!pid) return;
+    if (!window.confirm("Delete this listing? This cannot be undone.")) return;
+    try {
+      await api.deleteProperty(pid);
+      toast({ title: "Listing removed" });
+      setRows((prev) => prev.filter((r) => getPropertyId(r.raw) !== pid));
+    } catch (e) {
+      toast({
+        title: "Delete failed",
+        description: e instanceof Error ? e.message : "Try again later.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -159,13 +191,31 @@ const MyListingsPage = () => {
         </Button>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}{" "}
+          <button
+            type="button"
+            className="underline font-medium"
+            onClick={() => void load()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input placeholder="Search listings..." className="pl-9 h-11" />
+          <Input
+            placeholder="Search listings..."
+            className="pl-9 h-11"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
 
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[140px] h-11">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
@@ -174,108 +224,140 @@ const MyListingsPage = () => {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="sold">Sold</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="rented">Rented</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-muted/30 border-b border-border">
-              <tr>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Property
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Type
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Price
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Status
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Views
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Inquiries
-                </th>
-                <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
-                  Listed
-                </th>
-                <th className="w-12 px-4 py-4" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {listings.map((listing) => (
-                <tr
-                  key={listing.property}
-                  className="border-b border-border last:border-0"
-                >
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={listing.image}
-                        alt={listing.property}
-                        className="h-12 w-16 rounded-lg object-cover"
-                      />
-                      <p className="font-semibold text-foreground whitespace-nowrap">
-                        {listing.property}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-muted-foreground font-medium">
-                    {listing.type}
-                  </td>
-                  <td className="px-4 py-4 font-semibold text-foreground whitespace-nowrap">
-                    {listing.price}
-                  </td>
-                  <td className="px-4 py-4">
-                    <Badge
-                      variant={statusVariant(listing.status)}
-                      className="capitalize"
-                    >
-                      {listing.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-4 text-foreground">{listing.views}</td>
-                  <td className="px-4 py-4 text-foreground">
-                    {listing.inquiries}
-                  </td>
-                  <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
-                    {listing.listed}
-                  </td>
-                  <td className="px-4 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="size-4" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Pencil className="size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
-                          <Trash2 className="size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Loader2 className="size-6 animate-spin" />
+            Loading listings…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-6 py-16 text-center text-muted-foreground text-sm">
+            No listings yet.{" "}
+            <Link href="/agent/add-property" className="text-primary underline">
+              Add a property
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-muted/30 border-b border-border">
+                <tr>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Property
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Type
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Price
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Status
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Views
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Inquiries
+                  </th>
+                  <th className="text-left text-sm font-semibold text-muted-foreground px-4 py-4">
+                    Listed
+                  </th>
+                  <th className="w-12 px-4 py-4" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {filtered.map((listing) => {
+                  const pid = getPropertyId(listing.raw);
+                  return (
+                    <tr
+                      key={pid || listing.title}
+                      className="border-b border-border last:border-0"
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={listing.image}
+                            alt={listing.title}
+                            className="h-12 w-16 rounded-lg object-cover"
+                          />
+                          <p className="font-semibold text-foreground whitespace-nowrap max-w-[200px] truncate">
+                            {listing.title}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-muted-foreground font-medium capitalize">
+                        {typeof listing.raw === "object" &&
+                        listing.raw !== null &&
+                        "type" in listing.raw
+                          ? String(
+                              (listing.raw as Record<string, unknown>).type ??
+                                "",
+                            )
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-4 font-semibold text-foreground whitespace-nowrap">
+                        {listing.price}
+                      </td>
+                      <td className="px-4 py-4">
+                        <Badge
+                          variant={statusVariant(listing.agentStatus)}
+                          className="capitalize"
+                        >
+                          {listing.agentStatus}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-4 text-muted-foreground">—</td>
+                      <td className="px-4 py-4 text-muted-foreground">—</td>
+                      <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                        {pickListedDate(listing.raw)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem className="gap-2" asChild>
+                              <Link href={`/buyer/property/${pid}`}>
+                                <Eye className="size-4" />
+                                View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" disabled>
+                              <Pencil className="size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 text-destructive focus:text-destructive"
+                              onClick={() => void handleDelete(listing)}
+                            >
+                              <Trash2 className="size-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

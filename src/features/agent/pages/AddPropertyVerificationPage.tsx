@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { usePropertyCreation } from "../context/PropertyCreationContext";
+import { useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -83,6 +85,31 @@ const walletOptions = [
 
 const AddPropertyVerificationPage = () => {
   const router = useRouter();
+  const { property, setProperty } = usePropertyCreation();
+
+  // Example: manage deedDocument and ID upload (expand as needed)
+  const [deedDocument, setDeedDocument] = useState<File | undefined>(
+    property.deedDocument,
+  );
+  const [idDocument, setIdDocument] = useState<File | undefined>(
+    property.inspectionReport,
+  );
+
+  // Example: handle file upload (expand for all docs as needed)
+  const handleDeedUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDeedDocument(file);
+      setProperty({ deedDocument: file });
+    }
+  };
+  const handleIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIdDocument(file);
+      setProperty({ inspectionReport: file });
+    }
+  };
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -143,39 +170,80 @@ const AddPropertyVerificationPage = () => {
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {essentialDocuments.map((doc) => (
-                <Card key={doc.title} className={doc.border}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex gap-3">
-                        <div className="size-10 rounded-md bg-muted flex items-center justify-center text-primary">
-                          <doc.icon className="size-4" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">{doc.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {doc.helper}
-                          </p>
-                        </div>
+              {/* Title Deed Upload */}
+              <Card className="border-primary">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex gap-3">
+                      <div className="size-10 rounded-md bg-muted flex items-center justify-center text-primary">
+                        <FileText className="size-4" />
                       </div>
-                      <Badge variant="secondary" className={doc.tone}>
-                        {doc.status}
-                      </Badge>
+                      <div>
+                        <p className="font-semibold text-sm">
+                          Title Deed / C of O
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Primary proof of ownership for the property.
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-primary underline underline-offset-2">
-                        {doc.fileName}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        View
-                      </button>
+                    <Badge variant="secondary" className="text-emerald-600">
+                      {deedDocument ? "Uploaded" : "Required"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-primary underline underline-offset-2">
+                      {deedDocument ? deedDocument.name : "No file uploaded"}
+                    </span>
+                    <label className="text-muted-foreground hover:text-foreground cursor-pointer">
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        className="hidden"
+                        onChange={handleDeedUpload}
+                      />
+                      {deedDocument ? "Replace" : "Upload"}
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Government ID Upload */}
+              <Card className="border-emerald-500">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex gap-3">
+                      <div className="size-10 rounded-md bg-muted flex items-center justify-center text-primary">
+                        <FileBadge className="size-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">
+                          Government-Issued ID
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Valid passport or national ID card.
+                        </p>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <Badge variant="secondary" className="text-amber-600">
+                      {idDocument ? "Uploaded" : "Required"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-primary underline underline-offset-2">
+                      {idDocument ? idDocument.name : "No file uploaded"}
+                    </span>
+                    <label className="text-muted-foreground hover:text-foreground cursor-pointer">
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        className="hidden"
+                        onChange={handleIdUpload}
+                      />
+                      {idDocument ? "Replace" : "Upload"}
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
@@ -366,7 +434,12 @@ const AddPropertyVerificationPage = () => {
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline">Save as Draft</Button>
-          <Button onClick={() => router.push("/agent/add-property/review")}>
+          <Button
+            onClick={() => {
+              setProperty({ deedDocument, inspectionReport: idDocument });
+              router.push("/agent/add-property/review");
+            }}
+          >
             Continue to Review & Publish
           </Button>
         </div>

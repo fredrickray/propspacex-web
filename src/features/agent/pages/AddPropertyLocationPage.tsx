@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePropertyCreation } from "../context/PropertyCreationContext";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Navigation, Plus, ShieldCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,37 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import AddPropertyStepHeader from "../components/AddPropertyStepHeader";
+import { useToast } from "@/hooks/use-toast";
 
 const defaultNeighborhoodTags = ["Schools", "Transit", "Parks", "Shopping"];
 
 const AddPropertyLocationPage = () => {
   const router = useRouter();
-  const [tags, setTags] = useState(defaultNeighborhoodTags);
-  const [selectedTags, setSelectedTags] = useState<string[]>([
-    "Schools",
-    "Transit",
-  ]);
+  const { property, setProperty } = usePropertyCreation();
+  const { toast } = useToast();
+  // Address fields
+  const [address, setAddress] = useState(property.location?.address ?? "");
+  const [unit, setUnit] = useState(property.location?.unit ?? "");
+  const [city, setCity] = useState(property.location?.city ?? "");
+  const [stateVal, setStateVal] = useState(
+    property.location?.state ?? "california",
+  );
+  const [zip, setZip] = useState(property.location?.zip ?? "");
+  const [country, setCountry] = useState(property.location?.country ?? "us");
+  // Coordinates (not editable in UI, but could be added)
+  const [coordinates] = useState<[number, number]>(
+    property.location?.coordinates?.coordinates ?? [0, 0],
+  );
+  // Neighborhood
+  const [neighborhoodDescription, setNeighborhoodDescription] = useState(
+    property.location?.neighborhoodHighlights?.description ?? "",
+  );
+  const [tags, setTags] = useState(
+    property.location?.neighborhoodHighlights?.tags ?? defaultNeighborhoodTags,
+  );
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    property.location?.neighborhoodHighlights?.tags ?? ["Schools", "Transit"],
+  );
   const [newTag, setNewTag] = useState("");
 
   const toggleTag = (tag: string) => {
@@ -56,6 +78,33 @@ const AddPropertyLocationPage = () => {
     }
   };
 
+  const handleNext = () => {
+    setProperty({
+      location: {
+        address,
+        unit,
+        city,
+        state: stateVal,
+        zip,
+        country,
+        coordinates: { type: "Point", coordinates },
+        neighborhoodHighlights: {
+          description: neighborhoodDescription,
+          tags: selectedTags,
+        },
+      },
+    });
+    router.push("/agent/add-property/details");
+  };
+
+  const handleSaveDraft = () => {
+    localStorage.setItem("agent_add_property_draft", JSON.stringify(property));
+    toast({
+      title: "Draft saved",
+      description: "Location details saved to your draft.",
+    });
+  };
+
   return (
     <div className="max-w-6xl space-y-6">
       <AddPropertyStepHeader
@@ -73,7 +122,11 @@ const AddPropertyLocationPage = () => {
               <div className="font-semibold flex items-center gap-2 text-sm">
                 <Search className="size-4 text-primary" /> Quick Address Search
               </div>
-              <Input placeholder="Search for an address to auto-fill (e.g. 123 Main St)..." />
+              <Input
+                placeholder="Search for an address to auto-fill (e.g. 123 Main St)..."
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
               <p className="text-xs text-muted-foreground">
                 Selecting an address updates map pin placement automatically.
               </p>
@@ -91,24 +144,39 @@ const AddPropertyLocationPage = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="street">Street Address</Label>
-                <Input id="street" placeholder="1234 Innovation Blvd" />
+                <Input
+                  id="street"
+                  placeholder="1234 Innovation Blvd"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit / Suite (Optional)</Label>
-                  <Input id="unit" placeholder="Apt 4B" />
+                  <Input
+                    id="unit"
+                    placeholder="Apt 4B"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input id="city" placeholder="San Francisco" />
+                  <Input
+                    id="city"
+                    placeholder="San Francisco"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>State / Province</Label>
-                  <Select defaultValue="california">
+                  <Select value={stateVal} onValueChange={setStateVal}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select state" />
                     </SelectTrigger>
@@ -121,13 +189,18 @@ const AddPropertyLocationPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="zip">Zip / Postal Code</Label>
-                  <Input id="zip" placeholder="94103" />
+                  <Input
+                    id="zip"
+                    placeholder="94103"
+                    value={zip}
+                    onChange={(e) => setZip(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Country</Label>
-                <Select defaultValue="us">
+                <Select value={country} onValueChange={setCountry}>
                   <SelectTrigger>
                     <SelectValue placeholder="Country" />
                   </SelectTrigger>
@@ -150,6 +223,8 @@ const AddPropertyLocationPage = () => {
                   id="highlights"
                   placeholder="Describe nearby schools, parks, transit, and other location benefits..."
                   className="min-h-24"
+                  value={neighborhoodDescription}
+                  onChange={(e) => setNeighborhoodDescription(e.target.value)}
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -225,10 +300,10 @@ const AddPropertyLocationPage = () => {
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="flex items-center gap-2">
-          <Button variant="outline">Save Draft</Button>
-          <Button onClick={() => router.push("/agent/add-property/details")}>
-            Save & Continue
+          <Button variant="outline" onClick={handleSaveDraft}>
+            Save Draft
           </Button>
+          <Button onClick={handleNext}>Save & Continue</Button>
         </div>
       </div>
     </div>

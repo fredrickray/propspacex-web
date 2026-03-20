@@ -6,7 +6,7 @@ const email = z
   .min(1, "Email is required")
   .email("Please enter a valid email address");
 
-const password = z.string().min(8, "Password is required");
+const password = z.string().min(6, "Password is required");
 
 // ── Form schemas ──
 export const signupSchema = z.object({
