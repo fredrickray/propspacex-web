@@ -20,7 +20,7 @@ const navItems = [
   { label: "Dashboard", href: "/agent", icon: LayoutDashboard },
   { label: "My Listings", href: "/agent/listings", icon: House },
   { label: "Add Property", href: "/agent/add-property", icon: Plus },
-  { label: "Leads", href: "#", icon: Users },
+  { label: "Leads", href: "/agent/leads", icon: Users },
   { label: "Messages", href: "#", icon: MessageSquare },
   { label: "Analytics", href: "#", icon: BarChart3 },
   { label: "Settings", href: "#", icon: Settings },
@@ -30,7 +30,7 @@ const AgentSidebar = () => {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-[250px] shrink-0 flex-col border-r border-border bg-card">
+    <aside className="hidden lg:flex h-screen w-[250px] shrink-0 flex-col border-r border-border bg-card">
       <div className="h-16 border-b border-border px-4 flex items-center">
         <Link href="/agent" className="flex items-center gap-2">
           <PropSpaceLogo className="size-7 text-primary" />
@@ -49,11 +49,7 @@ const AgentSidebar = () => {
           const isActive =
             item.href === "/agent"
               ? pathname === "/agent"
-              : item.href === "/agent/listings"
-                ? pathname.startsWith("/agent/listings")
-                : item.href === "/agent/add-property"
-                  ? pathname.startsWith("/agent/add-property")
-                  : false;
+              : item.href !== "#" && pathname.startsWith(item.href);
           return (
             <Link
               key={item.label}

@@ -6,11 +6,11 @@ import AgentSidebar from "./AgentSidebar";
 
 const AgentLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       <AgentSidebar />
 
-      <div className="flex-1 min-w-0">
-        <header className="h-14 border-b border-border bg-card px-4 flex items-center">
+      <div className="flex-1 min-w-0 h-screen overflow-y-auto">
+        <header className="sticky top-0 z-10 h-14 border-b border-border bg-card px-4 flex items-center">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <PanelLeft className="size-4" />
           </Button>
