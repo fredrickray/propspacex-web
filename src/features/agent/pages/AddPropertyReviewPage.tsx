@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePropertyCreation } from "../context/PropertyCreationContext";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -21,21 +22,51 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import AddPropertyStepHeader from "../components/AddPropertyStepHeader";
+import {
+  api,
+  CreatePropertyRequest,
+  Currency,
+  PropertyStatus,
+  PropertyType,
+} from "@/lib/api";
 
 const AddPropertyReviewPage = () => {
   const router = useRouter();
   const { toast } = useToast();
+  const { property, resetProperty } = usePropertyCreation();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  const draftPayload = {
-    title: "Luxury Penthouse with Bay View",
-    type: "Residential Apartment",
-    location: "128 Marina Blvd, District 4, San Francisco, CA 94123",
-    beds: 3,
-    baths: 2.5,
-    sqft: 2450,
-    updatedAt: new Date().toISOString(),
+  const mapTypeToApi = (value?: string): PropertyType => {
+    const raw = (value ?? "").toLowerCase();
+    if (raw === PropertyType.HOUSE) return PropertyType.HOUSE;
+    if (raw === PropertyType.LAND) return PropertyType.LAND;
+    if (raw === PropertyType.COMMERCIAL) return PropertyType.COMMERCIAL;
+    return PropertyType.APARTMENT;
+  };
+
+  const mapStatusToApi = (value?: string): PropertyStatus => {
+    const raw = (value ?? "").toLowerCase();
+    if (raw === PropertyStatus.RENTED) return PropertyStatus.RENTED;
+    if (raw === PropertyStatus.SOLD) return PropertyStatus.SOLD;
+    if (raw === PropertyStatus.PENDING) return PropertyStatus.PENDING;
+    return PropertyStatus.AVAILABLE;
+  };
+
+  const mapCurrencyToApi = (value?: string): Currency => {
+    const raw = (value ?? "").toUpperCase();
+    if (raw === Currency.USD) return Currency.USD;
+    if (raw === Currency.ETH) return Currency.ETH;
+    if (raw === Currency.USDT) return Currency.USDT;
+    return Currency.NGN;
+  };
+
+  const normalizeCountry = (value?: string) => {
+    const raw = (value ?? "").toLowerCase();
+    if (raw === "us") return "United States";
+    if (raw === "ng") return "Nigeria";
+    if (raw === "uae") return "United Arab Emirates";
+    return value ?? "";
   };
 
   const handleSaveDraft = async () => {
@@ -43,7 +74,7 @@ const AddPropertyReviewPage = () => {
     try {
       localStorage.setItem(
         "agent_add_property_draft",
-        JSON.stringify(draftPayload),
+        JSON.stringify(property),
       );
       toast({
         title: "Draft saved",
@@ -57,7 +88,7 @@ const AddPropertyReviewPage = () => {
   const handlePreview = () => {
     localStorage.setItem(
       "agent_add_property_preview",
-      JSON.stringify(draftPayload),
+      JSON.stringify(property),
     );
     toast({
       title: "Preview ready",
@@ -67,15 +98,70 @@ const AddPropertyReviewPage = () => {
   };
 
   const handlePublish = async () => {
+    const title = property.title?.trim();
+    const description = property.description?.trim();
+    const location = property.location;
+
+    if (!title || !description || !location?.address || !location?.city) {
+      toast({
+        title: "Missing required fields",
+        description:
+          "Please complete title, description, and core location fields before publishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsPublishing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      const payload: CreatePropertyRequest = {
+        propertyData: {
+          title,
+          description,
+          type: mapTypeToApi(property.type),
+          status: mapStatusToApi(property.status),
+          price: Number(property.price ?? 0),
+          currency: mapCurrencyToApi(property.currency),
+          location: {
+            address: location.address,
+            suite: (location as { unit?: string }).unit ?? "",
+            city: location.city,
+            state: location.state,
+            country: normalizeCountry(location.country),
+            coordinates: location.coordinates ?? {
+              type: "Point",
+              coordinates: [0, 0],
+            },
+            neighborhoodHighlights: location.neighborhoodHighlights,
+          },
+          features: property.features ?? [],
+          size: property.size ?? {},
+          amenities: property.amenities ?? [],
+        },
+        images: property.images ?? [],
+        videos: property.videos ?? [],
+        deedDocument: property.deedDocument,
+        inspectionReport: property.inspectionReport,
+        appraisalReport: property.appraisalReport,
+      };
+      await api.createProperty(payload);
+
       localStorage.removeItem("agent_add_property_draft");
+      resetProperty();
       toast({
         title: "Property published",
         description: "Your listing is now live on PropSpace X.",
       });
       router.push("/agent/listings?published=true");
+    } catch (error) {
+      toast({
+        title: "Publish failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to publish property right now. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -93,8 +179,8 @@ const AddPropertyReviewPage = () => {
           <AddPropertyStepHeader
             title="Review Property Details"
             description="Please review all information below. Once published, the property will be live on the PropSpace X network."
-            step={4}
-            totalSteps={4}
+            step={6}
+            totalSteps={6}
             stepLabel="Review & Publish"
             completionLabel="100% Complete"
           />
@@ -117,17 +203,16 @@ const AddPropertyReviewPage = () => {
                     <p className="text-xs uppercase text-muted-foreground">
                       Property Title
                     </p>
-                    <p className="text-lg font-semibold">
-                      Luxury Penthouse with Bay View
-                    </p>
+                    <p className="text-lg font-semibold">{property.title}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase text-muted-foreground">
                       Address
                     </p>
-                    <p className="font-medium">128 Marina Blvd, District 4</p>
+                    <p className="font-medium">{property.location?.address}</p>
                     <p className="text-muted-foreground">
-                      San Francisco, CA 94123
+                      {property.location?.city}, {property.location?.state}{" "}
+                      {property.location?.zip} {property.location?.country}
                     </p>
                   </div>
                 </div>
@@ -137,9 +222,7 @@ const AddPropertyReviewPage = () => {
                     <p className="text-xs uppercase text-muted-foreground">
                       Property Type
                     </p>
-                    <p className="text-lg font-semibold">
-                      Residential Apartment
-                    </p>
+                    <p className="text-lg font-semibold">{property.type}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase text-muted-foreground mb-2">
@@ -148,17 +231,23 @@ const AddPropertyReviewPage = () => {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-md bg-muted p-2 text-center">
                         <Ruler className="size-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="font-semibold leading-none">2,450</p>
+                        <p className="font-semibold leading-none">
+                          {property.size?.dimensionDetails?.totalArea ?? "-"}
+                        </p>
                         <p className="text-xs text-muted-foreground">sqft</p>
                       </div>
                       <div className="rounded-md bg-muted p-2 text-center">
                         <BedDouble className="size-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="font-semibold leading-none">3</p>
+                        <p className="font-semibold leading-none">
+                          {property.size?.bedrooms ?? "-"}
+                        </p>
                         <p className="text-xs text-muted-foreground">Beds</p>
                       </div>
                       <div className="rounded-md bg-muted p-2 text-center">
                         <ShowerHead className="size-4 mx-auto mb-1 text-muted-foreground" />
-                        <p className="font-semibold leading-none">2.5</p>
+                        <p className="font-semibold leading-none">
+                          {property.size?.bathrooms ?? "-"}
+                        </p>
                         <p className="text-xs text-muted-foreground">Baths</p>
                       </div>
                     </div>
@@ -181,14 +270,29 @@ const AddPropertyReviewPage = () => {
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-28 rounded-lg bg-muted border border-border flex items-center justify-center text-xs text-muted-foreground"
-                  >
-                    {i === 3 ? "+12 more" : `Photo ${i + 1}`}
+                {property.images && property.images.length > 0 ? (
+                  property.images.slice(0, 4).map((file, i) => (
+                    <div
+                      key={i}
+                      className="h-28 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center text-xs text-muted-foreground"
+                    >
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {i === 3 && property.images.length > 4 ? (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">
+                          +{property.images.length - 3} more
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full h-20 rounded-lg border border-border bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">
+                    No media uploaded yet
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -204,12 +308,7 @@ const AddPropertyReviewPage = () => {
                   <Edit3 className="size-4" />
                 </Button>
               </div>
-              <p className="text-muted-foreground">
-                Experience luxury living at its finest in this stunning
-                penthouse apartment. Featuring panoramic views of the bay,
-                floor-to-ceiling windows, and a private terrace perfect for
-                entertaining.
-              </p>
+              <p className="text-muted-foreground">{property.description}</p>
             </CardContent>
           </Card>
         </div>

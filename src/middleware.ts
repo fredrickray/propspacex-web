@@ -1,38 +1,42 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/**
- * Auth middleware — protects /admin and /buyer routes.
- * Replace the placeholder logic below with your real auth check
- * (e.g. verify a JWT cookie, session token, etc.).
- */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isAuthRoute = pathname === "/auth" || pathname.startsWith("/auth/");
+  const isProtectedRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/agent") ||
+    pathname.startsWith("/buyer");
 
-  // ── Public routes that never require auth ──
-  const publicPaths = ["/", "/auth"];
-  const isPublic = publicPaths.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  if (!isAuthRoute && !isProtectedRoute) return NextResponse.next();
 
-  if (isPublic) {
-    return NextResponse.next();
+  const token = request.cookies.get("propspacex_auth_token")?.value;
+  const role = request.cookies.get("propspacex_role")?.value;
+
+  if (isProtectedRoute && !token) {
+    const loginUrl = new URL("/auth/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // ── TODO: Uncomment the block below when connecting to your auth backend ──
-  // const token =
-  //   request.cookies.get("auth-token")?.value ||
-  //   request.cookies.get("next-auth.session-token")?.value;
-  //
-  // if (!token) {
-  //   const loginUrl = new URL("/auth/login", request.url);
-  //   loginUrl.searchParams.set("callbackUrl", pathname);
-  //   return NextResponse.redirect(loginUrl);
-  // }
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
-  // ── Role-based access ──
-  // TODO: Decode the token and check roles. For now, allow all authenticated users.
-  // Example: if (pathname.startsWith("/admin") && !isAdmin(token)) { redirect to /buyer }
+  if (pathname.startsWith("/agent") && role !== "agent") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (pathname.startsWith("/buyer") && role !== "buyer") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (isAuthRoute && token) {
+    if (role === "admin") return NextResponse.redirect(new URL("/admin", request.url));
+    if (role === "agent") return NextResponse.redirect(new URL("/agent", request.url));
+    if (role === "buyer") return NextResponse.redirect(new URL("/buyer", request.url));
+  }
 
   return NextResponse.next();
 }

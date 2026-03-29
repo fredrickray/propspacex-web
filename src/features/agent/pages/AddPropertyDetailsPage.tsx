@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePropertyCreation } from "../context/PropertyCreationContext";
 import { useRouter } from "next/navigation";
 import {
   Minus,
@@ -43,13 +44,49 @@ const detailsFeatures = [
 
 const AddPropertyDetailsPage = () => {
   const router = useRouter();
-  const [bedrooms, setBedrooms] = useState(3);
-  const [bathrooms, setBathrooms] = useState(2);
-  const [parkingSpaces, setParkingSpaces] = useState(1);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([
-    "Swimming Pool",
-    "Central A/C",
-  ]);
+  const { property, setProperty } = usePropertyCreation();
+  // Initialize from context or defaults
+  const [bedrooms, setBedrooms] = useState(property.size?.bedrooms ?? 3);
+  const [bathrooms, setBathrooms] = useState(property.size?.bathrooms ?? 2);
+  const [parkingSpaces, setParkingSpaces] = useState(
+    property.size?.parkingSpaces ?? 1,
+  );
+  const [totalArea, setTotalArea] = useState(
+    property.size?.dimensionDetails?.totalArea ?? 0,
+  );
+  const [lotSize, setLotSize] = useState(
+    property.size?.dimensionDetails?.lotSize ?? 0,
+  );
+  const [yearBuilt, setYearBuilt] = useState(
+    property.size?.dimensionDetails?.yearBuilt ?? 2020,
+  );
+  const [propertyType, setPropertyType] = useState(
+    property.size?.dimensionDetails?.propertyType ?? "single-family",
+  );
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(
+    property.features ?? ["Swimming Pool", "Central A/C"],
+  );
+  const [description, setDescription] = useState(property.description ?? "");
+
+  // Save to context on next step
+  const handleNext = () => {
+    setProperty({
+      size: {
+        bedrooms,
+        bathrooms,
+        parkingSpaces,
+        dimensionDetails: {
+          totalArea,
+          lotSize,
+          yearBuilt,
+          propertyType,
+        },
+      },
+      features: selectedFeatures,
+      description,
+    });
+    router.push("/agent/add-property/amenities");
+  };
 
   const updateCounter = (
     setter: React.Dispatch<React.SetStateAction<number>>,
@@ -172,22 +209,41 @@ const AddPropertyDetailsPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="area">Total Area (Sq Ft)</Label>
-                <Input id="area" placeholder="e.g. 2,400" />
+                <Input
+                  id="area"
+                  placeholder="e.g. 2,400"
+                  type="number"
+                  value={totalArea}
+                  onChange={(e) => setTotalArea(Number(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lot">Lot Size (Sq Ft)</Label>
-                <Input id="lot" placeholder="e.g. 5,000" />
+                <Input
+                  id="lot"
+                  placeholder="e.g. 5,000"
+                  type="number"
+                  value={lotSize}
+                  onChange={(e) => setLotSize(Number(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="year">Year Built</Label>
                 <div className="relative">
                   <Calendar className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input id="year" placeholder="YYYY" className="pl-9" />
+                  <Input
+                    id="year"
+                    placeholder="YYYY"
+                    className="pl-9"
+                    type="number"
+                    value={yearBuilt}
+                    onChange={(e) => setYearBuilt(Number(e.target.value))}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Property Type</Label>
-                <Select defaultValue="single-family">
+                <Select value={propertyType} onValueChange={setPropertyType}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose type" />
                   </SelectTrigger>
@@ -230,6 +286,8 @@ const AddPropertyDetailsPage = () => {
               id="property-description"
               className="min-h-28"
               placeholder="Describe the home layout, unique advantages, and interior quality..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
         </CardContent>
@@ -243,9 +301,7 @@ const AddPropertyDetailsPage = () => {
         >
           <ArrowLeft className="size-4" /> Back
         </Button>
-        <Button onClick={() => router.push("/agent/add-property/amenities")}>
-          Continue to Amenities
-        </Button>
+        <Button onClick={handleNext}>Continue to Amenities</Button>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 flex items-center gap-2">

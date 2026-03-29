@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { usePropertyCreation } from "../context/PropertyCreationContext";
 import {
   ArrowLeft,
   ImageIcon,
@@ -15,27 +16,54 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import AddPropertyStepHeader from "../components/AddPropertyStepHeader";
+import { useToast } from "@/hooks/use-toast";
 
 const AddPropertyMediaPage = () => {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
-  const previewUrls = useMemo(
-    () => selectedFiles.map((file) => URL.createObjectURL(file)),
-    [selectedFiles],
+  const { property, setProperty } = usePropertyCreation();
+  const { toast } = useToast();
+  const [selectedImages, setSelectedImages] = useState<File[]>(
+    property.images ?? [],
   );
+  const [selectedVideos, setSelectedVideos] = useState<File[]>(
+    property.videos ?? [],
+  );
+
+  const imagePreviewUrls = useMemo(
+    () => selectedImages.map((file) => URL.createObjectURL(file)),
+    [selectedImages],
+  );
+
+  useEffect(() => {
+    return () => {
+      imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviewUrls]);
+
+  useEffect(() => {
+    setProperty({ images: selectedImages, videos: selectedVideos });
+  }, [selectedImages, selectedVideos, setProperty]);
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []).filter((file) =>
-      file.type.startsWith("image/"),
-    );
-    setSelectedFiles((prev) => [...prev, ...files]);
+    const files = Array.from(event.target.files ?? []);
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    const videos = files.filter((file) => file.type.startsWith("video/"));
+    setSelectedImages((prev) => [...prev, ...images]);
+    setSelectedVideos((prev) => [...prev, ...videos]);
     event.target.value = "";
+  };
+
+  const handleSaveDraft = () => {
+    localStorage.setItem("agent_add_property_draft", JSON.stringify(property));
+    toast({
+      title: "Draft saved",
+      description: "Media selection has been saved to your draft.",
+    });
   };
 
   return (
@@ -70,7 +98,7 @@ const AddPropertyMediaPage = () => {
               type="file"
               aria-label="Upload property media"
               title="Upload property media"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
               className="hidden"
               onChange={handleFileChange}
@@ -92,20 +120,20 @@ const AddPropertyMediaPage = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">
-                Uploaded Media ({selectedFiles.length} file
-                {selectedFiles.length === 1 ? "" : "s"})
+                Uploaded Media ({selectedImages.length + selectedVideos.length} file
+                {selectedImages.length + selectedVideos.length === 1 ? "" : "s"})
               </p>
               <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox /> Apply PropSpace watermark
               </label>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {previewUrls.length === 0 ? (
+              {imagePreviewUrls.length === 0 ? (
                 <div className="col-span-full h-20 rounded-lg border border-border bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">
                   No media uploaded yet
                 </div>
               ) : (
-                previewUrls.map((previewUrl, index) => (
+                imagePreviewUrls.map((previewUrl, index) => (
                   <div
                     key={`${previewUrl}-${index}`}
                     className="h-20 rounded-lg border border-border overflow-hidden bg-muted/40"
@@ -113,7 +141,7 @@ const AddPropertyMediaPage = () => {
                     <img
                       src={previewUrl}
                       alt={
-                        selectedFiles[index]?.name ??
+                        selectedImages[index]?.name ??
                         `Selected media ${index + 1}`
                       }
                       className="w-full h-full object-cover"
@@ -135,9 +163,14 @@ const AddPropertyMediaPage = () => {
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="flex items-center gap-2">
-          <Button variant="outline">Save Draft</Button>
+          <Button variant="outline" onClick={handleSaveDraft}>
+            Save Draft
+          </Button>
           <Button
-            onClick={() => router.push("/agent/add-property/verification")}
+            onClick={() => {
+              setProperty({ images: selectedImages, videos: selectedVideos });
+              router.push("/agent/add-property/verification");
+            }}
           >
             Next Step
           </Button>

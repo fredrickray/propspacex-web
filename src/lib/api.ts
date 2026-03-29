@@ -11,7 +11,7 @@ export interface User {
   isVerified: boolean;
 }
 
-interface Property {
+export interface Property {
   title: string;
   description: string;
   type: PropertyType;
@@ -35,7 +35,7 @@ interface Property {
   isActive: boolean;
 }
 
-interface IPropertyLocation {
+export interface IPropertyLocation {
   address: string;
   suite?: string;
   city: string;
@@ -48,21 +48,21 @@ interface IPropertyLocation {
   };
 }
 
-enum PropertyStatus {
+export enum PropertyStatus {
   AVAILABLE = "available",
   RENTED = "rented",
   SOLD = "sold",
   PENDING = "pending",
 }
 
-enum PropertyType {
+export enum PropertyType {
   APARTMENT = "apartment",
   HOUSE = "house",
   LAND = "land",
   COMMERCIAL = "commercial",
 }
 
-interface IPropertySize {
+export interface IPropertySize {
   bedrooms?: number;
   bathrooms?: number;
   parkingSpaces?: number;
@@ -74,13 +74,13 @@ interface IPropertySize {
   };
 }
 
-interface IPropertyAmenties {
+export interface IPropertyAmenties {
   comfort?: string[];
   safety?: string[];
   recreation?: string[];
 }
 
-enum Currency {
+export enum Currency {
   USD = "USD",
   NGN = "NGN",
   ETH = "ETH",
@@ -101,9 +101,68 @@ export interface AuthResponse {
   user: User;
 }
 
+export type CreatePropertyRequest = {
+  propertyData: Omit<Property, "media" | "ownerId" | "isActive" | "blockchain">;
+  images?: File[];
+  videos?: File[];
+  deedDocument?: File;
+  inspectionReport?: File;
+  appraisalReport?: File;
+};
+
 class ApiClient {
+  private readonly authCookieName = "propspacex_auth_token";
+  private readonly roleCookieName = "propspacex_role";
+  private readonly profileCookieName = "propspacex_user";
+
+  private getCookie(name: string): string | null {
+    if (typeof document === "undefined") return null;
+    const encodedName = `${name}=`;
+    const cookie = document.cookie
+      .split("; ")
+      .find((item) => item.startsWith(encodedName));
+    if (!cookie) return null;
+    return decodeURIComponent(cookie.substring(encodedName.length));
+  }
+
   private getToken(): string | null {
-    return localStorage.getItem("propspacex_token");
+    return this.getCookie(this.authCookieName);
+  }
+
+  private setCookie(name: string, value: string, maxAgeSeconds = 60 * 60 * 24) {
+    if (typeof document === "undefined") return;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+  }
+
+  private clearCookie(name: string) {
+    if (typeof document === "undefined") return;
+    document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+  }
+
+  private setSession(response: AuthResponse) {
+    this.setCookie(this.authCookieName, response.accessToken);
+    this.setCookie(this.roleCookieName, response.user.appRole);
+    this.setCookie(this.profileCookieName, JSON.stringify(response.user));
+  }
+
+  private clearSession() {
+    this.clearCookie(this.authCookieName);
+    this.clearCookie(this.roleCookieName);
+    this.clearCookie(this.profileCookieName);
+  }
+
+  private async parseResponse<T>(response: Response): Promise<T> {
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      return undefined as T;
+    }
+
+    return response.json();
   }
 
   private async request<T>(
@@ -125,11 +184,11 @@ class ApiClient {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      credentials: "include",
     });
 
     if (response.status === 401 && !skipAuthRedirect) {
-      localStorage.removeItem("propspacex_token");
-      localStorage.removeItem("propspacex_user");
+      this.clearSession();
       window.location.href = "/auth/login";
       throw new Error("Unauthorized");
     }
@@ -141,7 +200,7 @@ class ApiClient {
       throw new Error(error.message || error.detail || "Request failed");
     }
 
-    return response.json();
+    return this.parseResponse<T>(response);
   }
 
   async signin(email: string, password: string): Promise<AuthResponse> {
@@ -154,9 +213,7 @@ class ApiClient {
       { skipAuthRedirect: true },
     );
 
-    console.log("Api response:", response);
-    localStorage.setItem("propspacex_token", response.accessToken);
-    localStorage.setItem("propspacex_user", JSON.stringify(response.user));
+    this.setSession(response);
     return response;
   }
 
@@ -206,13 +263,12 @@ class ApiClient {
   }
 
   signout() {
-    localStorage.removeItem("propspacex_token");
-    localStorage.removeItem("propspacex_user");
+    this.clearSession();
     window.location.href = "/auth/login";
   }
 
   getProfile(): User | null {
-    const userJson = localStorage.getItem("propspacex_user");
+    const userJson = this.getCookie(this.profileCookieName);
     return userJson ? JSON.parse(userJson) : null;
   }
 
@@ -225,25 +281,15 @@ class ApiClient {
   }
 
   // Property api calls
-  async getProperties(): Promise<any[]> {
-    return this.request<any[]>("/properties");
+  async getProperties(): Promise<unknown[]> {
+    return this.request<unknown[]>("/properties");
   }
 
-  async getPropertyById(id: string): Promise<any> {
-    return this.request<any>(`/properties/${id}`);
+  async getPropertyById(id: string): Promise<unknown> {
+    return this.request<unknown>(`/properties/${id}`);
   }
 
-  async createProperty(data: {
-    propertyData: Omit<
-      Property,
-      "media" | "ownerId" | "isActive" | "blockchain"
-    >;
-    images?: File[];
-    videos?: File[];
-    deedDocument?: File;
-    inspectionReport?: File;
-    appraisalReport?: File;
-  }): Promise<any> {
+  async createProperty(data: CreatePropertyRequest): Promise<unknown> {
     const token = this.getToken();
     const formData = new FormData();
 
@@ -282,11 +328,11 @@ class ApiClient {
       method: "POST",
       headers,
       body: formData,
+      credentials: "include",
     });
 
     if (response.status === 401) {
-      localStorage.removeItem("propspacex_token");
-      localStorage.removeItem("propspacex_user");
+      this.clearSession();
       window.location.href = "/auth/login";
       throw new Error("Unauthorized");
     }
@@ -300,11 +346,11 @@ class ApiClient {
       );
     }
 
-    return response.json();
+    return this.parseResponse<unknown>(response);
   }
 
-  async getMyProperties(page = 1, limit = 10): Promise<any> {
-    return this.request<any>(`/properties/my?page=${page}&limit=${limit}`);
+  async getMyProperties(page = 1, limit = 10): Promise<unknown> {
+    return this.request<unknown>(`/agents/properties?page=${page}&limit=${limit}`);
   }
 
   async updateProperty(
@@ -312,7 +358,7 @@ class ApiClient {
     data: Partial<
       Omit<Property, "media" | "ownerId" | "isActive" | "blockchain">
     >,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return this.request(`/properties/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),

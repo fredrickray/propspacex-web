@@ -1,37 +1,19 @@
 "use client";
 
-import { Home, Heart, Calendar, Wallet, ArrowRight } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Home, Heart, Calendar, Wallet, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import StatCard from "../components/StatCard";
 import PropertyGridCard from "../components/PropertyGridCard";
-
-const savedProperties = [
-  {
-    id: "1",
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800",
-    price: "$1,250,000",
-    title: "Modern Villa with Pool",
-    location: "4521 Beverly Hills Dr, Los Angeles",
-    beds: 4,
-    baths: 3,
-    sqft: "3,400 sqft",
-    isFavorited: true,
-  },
-  {
-    id: "2",
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-    price: "$850,000",
-    title: "Miami Beach House",
-    location: "1200 Main St, Apt 18, New York",
-    beds: 3,
-    baths: 2,
-    sqft: "1,950 sqft",
-    isFavorited: true,
-  },
-];
+import { api } from "@/lib/api";
+import {
+  normalizePropertyForCard,
+  parsePropertyListEnvelope,
+  type NormalizedPropertyCard,
+} from "@/lib/property-normalize";
 
 const savedSearches = [
   { name: "Downtown Condos", location: "New York, NY", matches: 24 },
@@ -44,6 +26,31 @@ const recentlyViewed = [
 ];
 
 const DashboardPage = () => {
+  const [featured, setFeatured] = useState<NormalizedPropertyCard[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
+  const loadFeatured = useCallback(async () => {
+    setLoadingFeatured(true);
+    try {
+      const raw = await api.getProperties();
+      const rows = parsePropertyListEnvelope(raw);
+      const cards: NormalizedPropertyCard[] = [];
+      for (const row of rows.slice(0, 4)) {
+        const c = normalizePropertyForCard(row);
+        if (c) cards.push(c);
+      }
+      setFeatured(cards);
+    } catch {
+      setFeatured([]);
+    } finally {
+      setLoadingFeatured(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadFeatured();
+  }, [loadFeatured]);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -96,19 +103,33 @@ const DashboardPage = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">
-              Saved Properties
+              Featured listings
             </h2>
             <Button variant="link" asChild>
-              <Link href="/buyer/favorites">
-                View All <ArrowRight className="size-4 ml-1" />
+              <Link href="/buyer/search">
+                Browse all <ArrowRight className="size-4 ml-1" />
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {savedProperties.map((property) => (
-              <PropertyGridCard key={property.id} {...property} />
-            ))}
-          </div>
+          {loadingFeatured ? (
+            <div className="flex items-center gap-2 py-12 text-muted-foreground justify-center">
+              <Loader2 className="size-5 animate-spin" />
+              Loading listings…
+            </div>
+          ) : featured.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8">
+              No listings available right now.{" "}
+              <Link href="/buyer/search" className="text-primary underline">
+                Try search
+              </Link>
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {featured.map((property) => (
+                <PropertyGridCard key={property.id} {...property} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sidebar Content */}
