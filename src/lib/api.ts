@@ -165,6 +165,48 @@ class ApiClient {
     return response.json();
   }
 
+  private isAuthErrorText(text?: string): boolean {
+    if (!text) return false;
+    const normalized = text.toLowerCase();
+    return [
+      "token has expired",
+      "token expired",
+      "jwt expired",
+      "invalid token",
+      "token is invalid",
+      "unauthorized",
+      "authentication failed",
+      "not authenticated",
+      "invalid signature",
+    ].some((value) => normalized.includes(value));
+  }
+
+  private redirectToLogin() {
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
+    }
+  }
+
+  private async parseError(
+    response: Response,
+    fallback: string,
+  ): Promise<{ message: string; details?: string }> {
+    const errorPayload = await response.json().catch(() => ({}));
+    const details =
+      typeof errorPayload.details === "string"
+        ? errorPayload.details
+        : typeof errorPayload.detail === "string"
+          ? errorPayload.detail
+          : undefined;
+    const message =
+      typeof errorPayload.message === "string" ? errorPayload.message : undefined;
+
+    return {
+      message: details ?? message ?? fallback,
+      details,
+    };
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -189,15 +231,20 @@ class ApiClient {
 
     if (response.status === 401 && !skipAuthRedirect) {
       this.clearSession();
-      window.location.href = "/auth/login";
-      throw new Error("Unauthorized");
+      this.redirectToLogin();
+      const parsed = await this.parseError(response, "Unauthorized");
+      throw new Error(parsed.message);
     }
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || error.detail || "Request failed");
+      const parsed = await this.parseError(response, "Request failed");
+
+      if (!skipAuthRedirect && this.isAuthErrorText(parsed.message)) {
+        this.clearSession();
+        this.redirectToLogin();
+      }
+
+      throw new Error(parsed.message);
     }
 
     return this.parseResponse<T>(response);
@@ -333,17 +380,18 @@ class ApiClient {
 
     if (response.status === 401) {
       this.clearSession();
-      window.location.href = "/auth/login";
-      throw new Error("Unauthorized");
+      this.redirectToLogin();
+      const parsed = await this.parseError(response, "Unauthorized");
+      throw new Error(parsed.message);
     }
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ detail: "Request failed" }));
-      throw new Error(
-        error.detail || error.message || "Failed to create property",
-      );
+      const parsed = await this.parseError(response, "Failed to create property");
+      if (this.isAuthErrorText(parsed.message)) {
+        this.clearSession();
+        this.redirectToLogin();
+      }
+      throw new Error(parsed.message);
     }
 
     return this.parseResponse<unknown>(response);

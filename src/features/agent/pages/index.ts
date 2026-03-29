@@ -8,3 +8,4 @@ export { default as AddPropertyAmenitiesPage } from "./AddPropertyAmenitiesPage"
 export { default as AddPropertyMediaPage } from "./AddPropertyMediaPage";
 export { default as AddPropertyVerificationPage } from "./AddPropertyVerificationPage";
 export { default as AddPropertyReviewPage } from "./AddPropertyReviewPage";
+export { default as LeadsPage } from "./LeadsPage";
