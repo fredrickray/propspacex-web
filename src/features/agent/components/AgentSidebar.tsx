@@ -11,10 +11,12 @@ import {
   BarChart3,
   Settings,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { api } from "@/lib/api";
 
 const navItems = [
   { label: "Dashboard", href: "/agent", icon: LayoutDashboard },
@@ -68,7 +70,7 @@ const AgentSidebar = () => {
         })}
       </nav>
 
-      <div className="mt-auto border-t border-border p-4">
+      <div className="mt-auto border-t border-border p-4 space-y-1">
         <button
           type="button"
           className="w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted transition-colors"
@@ -86,6 +88,14 @@ const AgentSidebar = () => {
             </p>
           </div>
           <ChevronDown className="size-4 text-muted-foreground ml-auto" />
+        </button>
+        <button
+          type="button"
+          onClick={() => api.signout()}
+          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <LogOut className="size-4" />
+          <span>Log out</span>
         </button>
       </div>
     </aside>

@@ -101,6 +101,12 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface Web3NonceResponse {
+  success: boolean;
+  message: string;
+  nonce?: string;
+}
+
 export type CreatePropertyRequest = {
   propertyData: Omit<Property, "media" | "ownerId" | "isActive" | "blockchain">;
   images?: File[];
@@ -309,9 +315,80 @@ class ApiClient {
     );
   }
 
+  async requestWeb3Nonce(
+    walletAddress: string,
+    appRole?: "buyer" | "agent",
+  ): Promise<Web3NonceResponse> {
+    const payload: { walletAddress: string; appRole?: "buyer" | "agent" } = {
+      walletAddress,
+    };
+    if (appRole !== undefined) {
+      payload.appRole = appRole;
+    }
+
+    const response = await this.request<{
+      success?: boolean;
+      message?: string;
+      nonce?: string;
+      data?: { nonce?: string; message?: string };
+    }>(
+      "/auth/request-web3-nonce",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      { skipAuthRedirect: true },
+    );
+
+    const nonce =
+      response.nonce ??
+      response.data?.nonce ??
+      response.data?.message ??
+      response.message;
+
+    return {
+      success: Boolean(response.success ?? true),
+      message: response.message ?? "Nonce generated",
+      nonce,
+    };
+  }
+
+  async verifyWeb3Signature(
+    walletAddress: string,
+    signature: string,
+    message: string,
+  ): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>(
+      "/auth/verify-web3-signature",
+      {
+        method: "POST",
+        body: JSON.stringify({ walletAddress, signature, message }),
+      },
+      { skipAuthRedirect: true },
+    );
+
+    this.setSession(response);
+    return response;
+  }
+
+  async linkWeb3Wallet(
+    walletAddress: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(
+      "/auth/link-web3-wallet",
+      {
+        method: "POST",
+        body: JSON.stringify({ walletAddress }),
+      },
+      { skipAuthRedirect: false },
+    );
+  }
+
   signout() {
     this.clearSession();
-    window.location.href = "/auth/login";
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
+    }
   }
 
   getProfile(): User | null {

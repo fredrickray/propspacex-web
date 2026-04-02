@@ -20,8 +20,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+  }
+}
+
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isWalletLoading, setIsWalletLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -74,6 +83,61 @@ const RegisterPage = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleWalletAuth = async () => {
+    if (!window.ethereum) {
+      toast({
+        title: "Wallet not found",
+        description: "Please install MetaMask (or another Ethereum wallet).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsWalletLoading(true);
+    try {
+      const accounts = (await window.ethereum.request({
+        method: "eth_requestAccounts",
+      })) as string[];
+
+      const walletAddress = accounts?.[0];
+      if (!walletAddress) throw new Error("No wallet account selected");
+
+      const nonceRes = await api.requestWeb3Nonce(walletAddress, userType);
+      const messageToSign = nonceRes.nonce;
+      if (!messageToSign) throw new Error("Failed to get nonce message");
+
+      const signature = (await window.ethereum.request({
+        method: "personal_sign",
+        params: [messageToSign, walletAddress],
+      })) as string;
+
+      const { user } = await api.verifyWeb3Signature(
+        walletAddress,
+        signature,
+        messageToSign,
+      );
+
+      toast({
+        title: "Wallet authenticated",
+        description: "Welcome to PropSpace X.",
+      });
+
+      if (user.appRole === "admin") router.push("/admin");
+      else if (user.appRole === "agent") router.push("/agent");
+      else router.push("/buyer");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Wallet authentication failed";
+      toast({
+        title: "Wallet auth failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsWalletLoading(false);
     }
   };
 
@@ -193,6 +257,9 @@ const RegisterPage = () => {
             <AuthButton
               variant="outline"
               leftIcon={<Wallet className="size-5" />}
+              onClick={handleWalletAuth}
+              isLoading={isWalletLoading}
+              disabled={isLoading}
             >
               Continue with Wallet
             </AuthButton>
