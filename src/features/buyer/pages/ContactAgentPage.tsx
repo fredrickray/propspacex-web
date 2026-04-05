@@ -8,7 +8,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 
 const ContactAgentPage = () => {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const intent = searchParams.get("intent");
+  const defaultMessage =
+    intent === "tour"
+      ? "I would like to schedule a tour of this property. Please share your availability.\n\nThank you."
+      : "Hi, I'm interested in this listing. I'd appreciate more details and next steps.\n\nThank you.";
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,10 +60,12 @@ const ContactAgentPage = () => {
         </Link>
 
         <h1 className="text-2xl font-bold text-foreground mb-1">
-          Contact Agent
+          {intent === "tour" ? "Schedule a tour" : "Contact Agent"}
         </h1>
         <p className="text-muted-foreground mb-8">
-          Get in touch with the listing agent for this property.
+          {intent === "tour"
+            ? "Pick a time to visit this property with the listing agent."
+            : "Get in touch with the listing agent for this property."}
         </p>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -197,8 +205,9 @@ const ContactAgentPage = () => {
                     MESSAGE
                   </Label>
                   <Textarea
+                    key={intent ?? "default"}
                     rows={4}
-                    defaultValue="Hi Sarah, I'm interested in the Oceanview Penthouse (Ref. PA-0328). Could we schedule a viewing for this weekend? Thanks."
+                    defaultValue={defaultMessage}
                   />
                 </div>
 

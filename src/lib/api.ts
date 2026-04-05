@@ -448,7 +448,7 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/properties`, {
+    const response = await fetch(`${API_BASE_URL}/agents/properties`, {
       method: "POST",
       headers,
       body: formData,
@@ -484,14 +484,14 @@ class ApiClient {
       Omit<Property, "media" | "ownerId" | "isActive" | "blockchain">
     >,
   ): Promise<unknown> {
-    return this.request(`/properties/${id}`, {
+    return this.request(`/agents/properties/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteProperty(id: string): Promise<void> {
-    await this.request(`/properties/${id}`, {
+    await this.request(`/agents/properties/${id}`, {
       method: "DELETE",
     });
   }

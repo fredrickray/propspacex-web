@@ -48,6 +48,17 @@ const nextConfig = {
         protocol: "https",
         hostname: "www.transparenttextures.com",
       },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+      // Local file server / gateway serving uploaded property images (dev)
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9093",
+        pathname: "/uploads/**",
+      },
     ],
   },
   async headers() {

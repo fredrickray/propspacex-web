@@ -24,8 +24,8 @@ const navItems = [
   { label: "Add Property", href: "/agent/add-property", icon: Plus },
   { label: "Leads", href: "/agent/leads", icon: Users },
   { label: "Messages", href: "#", icon: MessageSquare },
-  { label: "Analytics", href: "#", icon: BarChart3 },
-  { label: "Settings", href: "#", icon: Settings },
+  { label: "Analytics", href: "/agent/analytics", icon: BarChart3 },
+  { label: "Settings", href: "/agent/settings", icon: Settings },
 ];
 
 const AgentSidebar = () => {

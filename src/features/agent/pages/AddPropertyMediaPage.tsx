@@ -156,6 +156,7 @@ const AddPropertyMediaPage = () => {
 
       <div className="flex items-center justify-between">
         <Button
+          type="button"
           variant="ghost"
           className="gap-2"
           onClick={() => router.push("/agent/add-property/amenities")}
@@ -163,10 +164,11 @@ const AddPropertyMediaPage = () => {
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleSaveDraft}>
+          <Button type="button" variant="outline" onClick={handleSaveDraft}>
             Save Draft
           </Button>
           <Button
+            type="button"
             onClick={() => {
               setProperty({ images: selectedImages, videos: selectedVideos });
               router.push("/agent/add-property/verification");

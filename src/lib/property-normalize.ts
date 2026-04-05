@@ -177,11 +177,29 @@ export function normalizePropertyForCard(raw: unknown): NormalizedPropertyCard |
   };
 }
 
+/** GeoJSON Point coordinates [longitude, latitude], or null if missing. */
+export function getPropertyLngLat(raw: unknown): [number, number] | null {
+  if (!isRecord(raw)) return null;
+  const loc = raw.location;
+  if (!isRecord(loc)) return null;
+  const c = loc.coordinates;
+  if (!isRecord(c)) return null;
+  const arr = c.coordinates;
+  if (!Array.isArray(arr) || arr.length < 2) return null;
+  const lng = Number(arr[0]);
+  const lat = Number(arr[1]);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  if (Math.abs(lng) < 1e-6 && Math.abs(lat) < 1e-6) return null;
+  return [lng, lat];
+}
+
 export type NormalizedPropertyDetail = NormalizedPropertyCard & {
   description: string;
   type: string;
   status: string;
   features: string[];
+  /** [lng, lat] when API provides GeoJSON Point */
+  coordinates: [number, number] | null;
 };
 
 export function normalizePropertyForDetail(
@@ -205,6 +223,7 @@ export function normalizePropertyForDetail(
     type,
     status,
     features,
+    coordinates: getPropertyLngLat(raw),
   };
 }
 

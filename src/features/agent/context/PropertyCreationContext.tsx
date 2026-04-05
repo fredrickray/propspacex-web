@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 import { CreatePropertyPayload } from "../pages/types";
 
 // Define the shape of the context
@@ -23,11 +29,13 @@ export const PropertyCreationProvider = ({
     {},
   );
 
-  const setProperty = (data: Partial<CreatePropertyPayload>) => {
+  const setProperty = useCallback((data: Partial<CreatePropertyPayload>) => {
     setPropertyState((prev) => ({ ...prev, ...data }));
-  };
+  }, []);
 
-  const resetProperty = () => setPropertyState({});
+  const resetProperty = useCallback(() => {
+    setPropertyState({});
+  }, []);
 
   return (
     <PropertyCreationContext.Provider
