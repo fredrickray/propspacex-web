@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { api } from "@/lib/api";
 import {
   Sidebar,
   SidebarContent,
@@ -120,7 +121,12 @@ export function AdminSidebar() {
               <Settings className="mr-2 size-4" />
               Account Settings
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onSelect={() => {
+                api.signout();
+              }}
+            >
               <LogOut className="mr-2 size-4" />
               Logout
             </DropdownMenuItem>

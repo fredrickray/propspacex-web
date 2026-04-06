@@ -62,11 +62,34 @@ const AddPropertyReviewPage = () => {
   };
 
   const normalizeCountry = (value?: string) => {
-    const raw = (value ?? "").toLowerCase();
-    if (raw === "us") return "United States";
-    if (raw === "ng") return "Nigeria";
-    if (raw === "uae") return "United Arab Emirates";
-    return value ?? "";
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) return "";
+    const raw = trimmed.toLowerCase();
+    const map: Record<string, string> = {
+      us: "United States",
+      usa: "United States",
+      ng: "Nigeria",
+      uae: "United Arab Emirates",
+      ae: "United Arab Emirates",
+      gb: "United Kingdom",
+      uk: "United Kingdom",
+      ca: "Canada",
+      fr: "France",
+      de: "Germany",
+      in: "India",
+      ke: "Kenya",
+      za: "South Africa",
+      gh: "Ghana",
+      eg: "Egypt",
+      es: "Spain",
+      it: "Italy",
+      br: "Brazil",
+      mx: "Mexico",
+      jp: "Japan",
+      au: "Australia",
+    };
+    if (map[raw]) return map[raw];
+    return trimmed;
   };
 
   const handleSaveDraft = async () => {

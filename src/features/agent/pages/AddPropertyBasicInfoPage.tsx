@@ -25,22 +25,41 @@ const AddPropertyBasicInfoPage = () => {
   const [title, setTitle] = useState(property.title ?? "");
   const [type, setType] = useState(property.type ?? "apartment");
   const [status, setStatus] = useState(property.status ?? "available");
-  const [price, setPrice] = useState(
-    property.price !== undefined ? String(property.price) : "",
-  );
+  const formatPriceThousands = (rawDigits: string) => {
+    if (!rawDigits) return "";
+    return BigInt(rawDigits).toLocaleString("en-US");
+  };
+
+  const [price, setPrice] = useState(() => {
+    if (property.price === undefined || property.price === null) return "";
+    const n = Number(property.price);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    return formatPriceThousands(String(Math.round(n)));
+  });
   const [currency, setCurrency] = useState(property.currency ?? "NGN");
   const [description, setDescription] = useState(property.description ?? "");
+
+  const priceNumeric = Number((price || "").replace(/,/g, "")) || 0;
 
   const handleNext = () => {
     setProperty({
       title: title.trim(),
       type,
       status,
-      price: Number(price || 0),
+      price: priceNumeric,
       currency,
       description: description.trim(),
     });
     router.push("/agent/add-property/location");
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (!digits) {
+      setPrice("");
+      return;
+    }
+    setPrice(formatPriceThousands(digits));
   };
 
   return (
@@ -116,10 +135,12 @@ const AddPropertyBasicInfoPage = () => {
               <Label htmlFor="price">Asking Price</Label>
               <Input
                 id="price"
-                placeholder="0.00"
-                type="number"
+                placeholder="0"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={handlePriceChange}
               />
             </div>
             <div className="space-y-2">
@@ -163,8 +184,9 @@ const AddPropertyBasicInfoPage = () => {
 
       <div className="flex items-center justify-end">
         <Button
+          type="button"
           onClick={handleNext}
-          disabled={!title.trim() || !price || Number(price) <= 0}
+          disabled={!title.trim() || priceNumeric <= 0}
         >
           Continue to Location
         </Button>

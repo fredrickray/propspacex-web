@@ -21,8 +21,17 @@ import { api, AppRole } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema, type LoginFormData } from "../validations";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+  }
+}
+
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isWalletLoading, setIsWalletLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -68,6 +77,62 @@ const LoginPage = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleWalletAuth = async () => {
+    if (!window.ethereum) {
+      toast({
+        title: "Wallet not found",
+        description: "Please install MetaMask (or another Ethereum wallet).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsWalletLoading(true);
+    try {
+      const accounts = (await window.ethereum.request({
+        method: "eth_requestAccounts",
+      })) as string[];
+
+      const walletAddress = accounts?.[0];
+      if (!walletAddress) throw new Error("No wallet account selected");
+
+      const nonceRes = await api.requestWeb3Nonce(walletAddress);
+      const messageToSign = nonceRes.nonce;
+      if (!messageToSign) throw new Error("Failed to get nonce message");
+
+      const signature = (await window.ethereum.request({
+        method: "personal_sign",
+        params: [messageToSign, walletAddress],
+      })) as string;
+
+      const { user } = await api.verifyWeb3Signature(
+        walletAddress,
+        signature,
+        messageToSign,
+      );
+
+      toast({
+        title: "Wallet connected",
+        description: `Signed in as ${user.email ?? walletAddress}`,
+      });
+
+      if (user.appRole === AppRole.Buyer) router.push("/buyer");
+      else if (user.appRole === AppRole.Agent) router.push("/agent");
+      else if (user.appRole === AppRole.Admin) router.push("/admin");
+      else router.push("/");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Wallet sign-in failed";
+      toast({
+        title: "Wallet sign-in failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsWalletLoading(false);
     }
   };
 
@@ -221,6 +286,9 @@ const LoginPage = () => {
             <AuthButton
               variant="outline"
               leftIcon={<Wallet className="size-5" />}
+              onClick={handleWalletAuth}
+              isLoading={isWalletLoading}
+              disabled={isLoading}
             >
               Connect Wallet
             </AuthButton>

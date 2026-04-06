@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { api } from "@/lib/api";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/buyer" },
@@ -22,7 +23,6 @@ const navItems = [
 
 const bottomItems = [
   { icon: Settings, label: "Settings", path: "/buyer/settings" },
-  { icon: LogOut, label: "Log Out", path: "/auth/login" },
 ];
 
 const BuyerSidebar = () => {
@@ -73,6 +73,14 @@ const BuyerSidebar = () => {
             <span className="font-medium">{item.label}</span>
           </Link>
         ))}
+        <button
+          type="button"
+          onClick={() => api.signout()}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left"
+        >
+          <LogOut className="size-5" />
+          <span className="font-medium">Log Out</span>
+        </button>
       </div>
     </aside>
   );

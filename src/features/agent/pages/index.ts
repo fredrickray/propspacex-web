@@ -9,3 +9,5 @@ export { default as AddPropertyMediaPage } from "./AddPropertyMediaPage";
 export { default as AddPropertyVerificationPage } from "./AddPropertyVerificationPage";
 export { default as AddPropertyReviewPage } from "./AddPropertyReviewPage";
 export { default as LeadsPage } from "./LeadsPage";
+export { default as AnalyticsPage } from "./AnalyticsPage";
+export { default as AgentSettingsPage } from "./AgentSettingsPage";
