@@ -11,6 +11,7 @@ import {
   LogOut,
   Pencil,
   Shield,
+  Sun,
   User,
   Wallet,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeAppearanceSettings } from "@/components/settings/theme-appearance-settings";
 
 declare global {
   interface Window {
@@ -45,6 +47,7 @@ declare global {
 
 type SettingsSectionId =
   | "profile"
+  | "appearance"
   | "notifications"
   | "wallet"
   | "payouts"
@@ -56,6 +59,7 @@ const settingsNav: {
   icon: typeof User;
 }[] = [
   { id: "profile", label: "General Profile", icon: User },
+  { id: "appearance", label: "Appearance", icon: Sun },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "wallet", label: "Web3 Wallet", icon: Link2 },
   { id: "payouts", label: "Payouts & Billing", icon: CreditCard },
@@ -313,6 +317,26 @@ export default function AgentSettingsPage() {
                     View Public Profile
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section
+            ref={(el) => {
+              sectionRefs.current.appearance = el;
+            }}
+            id="settings-appearance"
+            className="scroll-mt-24"
+          >
+            <Card className="rounded-xl border-border shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <Sun className="size-4 text-primary" />
+                  Appearance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ThemeAppearanceSettings />
               </CardContent>
             </Card>
           </section>

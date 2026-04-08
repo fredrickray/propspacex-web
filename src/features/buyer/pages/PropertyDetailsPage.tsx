@@ -36,9 +36,12 @@ import {
   type NormalizedPropertyDetail,
 } from "@/lib/property-normalize";
 import { useToast } from "@/hooks/use-toast";
+import {
+  isFavorite as readIsFavorite,
+  removeFavorite,
+  upsertFavorite,
+} from "@/lib/favorites-storage";
 import { cn } from "@/lib/utils";
-
-const FAVORITES_KEY = "propspacex_favorite_property_ids";
 
 const PropertyReadOnlyMap = dynamic(
   () => import("../components/PropertyReadOnlyMap"),
@@ -61,23 +64,6 @@ function formatPropertyType(value: string) {
 function formatStatusLabel(value: string) {
   if (!value || value === "—") return "—";
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-}
-
-function readFavoriteIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((x): x is string => typeof x === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeFavoriteIds(ids: string[]) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
 }
 
 const PropertyDetailsPage = () => {
@@ -137,7 +123,7 @@ const PropertyDetailsPage = () => {
 
   useEffect(() => {
     if (!id) return;
-    setSaved(readFavoriteIds().includes(id));
+    setSaved(readIsFavorite(id));
   }, [id]);
 
   const images = useMemo(() => {
@@ -186,18 +172,30 @@ const PropertyDetailsPage = () => {
   }, [detail?.title, toast]);
 
   const toggleFavorite = useCallback(() => {
-    if (!id) return;
-    const ids = readFavoriteIds();
-    const next = saved ? ids.filter((x) => x !== id) : [...ids, id];
-    writeFavoriteIds(next);
-    setSaved(!saved);
-    toast({
-      title: saved ? "Removed from favorites" : "Saved to favorites",
-      description: saved
-        ? "You can add it again anytime."
-        : "We stored this on this device for now.",
+    if (!id || !detail) return;
+    if (saved) {
+      removeFavorite(id);
+      setSaved(false);
+      toast({
+        title: "Removed from favorites",
+        description: "You can add it again anytime.",
+      });
+      return;
+    }
+    upsertFavorite({
+      id,
+      title: detail.title,
+      priceLabel: detail.price,
+      locationLabel: detail.location,
+      imageUrl: detail.image,
+      savedAtIso: new Date().toISOString(),
     });
-  }, [id, saved, toast]);
+    setSaved(true);
+    toast({
+      title: "Saved to favorites",
+      description: "Stored on this device — syncs to your account when the API is connected.",
+    });
+  }, [id, detail, saved, toast]);
 
   const lightboxNext = useCallback(() => {
     setActiveImageIndex((i) => (images.length ? (i + 1) % images.length : 0));

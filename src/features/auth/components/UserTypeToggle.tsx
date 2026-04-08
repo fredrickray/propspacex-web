@@ -5,13 +5,19 @@ type UserType = "buyer" | "agent";
 interface UserTypeToggleProps {
   value: UserType;
   onChange: (value: UserType) => void;
+  /** Shown above the toggle (e.g. register vs wallet login). */
+  label?: string;
 }
 
-export const UserTypeToggle = ({ value, onChange }: UserTypeToggleProps) => {
+export const UserTypeToggle = ({
+  value,
+  onChange,
+  label = "Join as a",
+}: UserTypeToggleProps) => {
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-foreground">
-        Join as a
+        {label}
       </label>
       <div className="flex rounded-lg border border-border overflow-hidden">
         <button

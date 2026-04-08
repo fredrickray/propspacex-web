@@ -1,4 +1,4 @@
-import { MapPin, Bell, Edit, Trash2, Play } from "lucide-react";
+import { MapPin, Bell, Trash2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +10,9 @@ interface SavedSearchCardProps {
   matchCount: number;
   alertsEnabled: boolean;
   lastUpdated: string;
+  onRun?: () => void;
+  onDelete?: () => void;
+  onToggleAlerts?: () => void;
 }
 
 const SavedSearchCard = ({
@@ -19,6 +22,9 @@ const SavedSearchCard = ({
   matchCount,
   alertsEnabled,
   lastUpdated,
+  onRun,
+  onDelete,
+  onToggleAlerts,
 }: SavedSearchCardProps) => {
   return (
     <div className="bg-surface border border-border rounded-xl p-4 hover:shadow-md transition-shadow">
@@ -29,9 +35,13 @@ const SavedSearchCard = ({
           </div>
           <div>
             <h3 className="font-semibold text-foreground">{name}</h3>
-            {alertsEnabled && (
+            {alertsEnabled ? (
               <Badge variant="secondary" className="mt-1">
                 <Bell className="size-3 mr-1" /> Alerts On
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="mt-1 text-xs">
+                Alerts off
               </Badge>
             )}
           </div>
@@ -51,13 +61,28 @@ const SavedSearchCard = ({
           {matchCount} properties match
         </span>
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Edit className="size-4" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onToggleAlerts}
+            disabled={!onToggleAlerts}
+            title="Toggle alerts"
+          >
+            <Bell className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onDelete}
+            disabled={!onDelete}
+          >
             <Trash2 className="size-4" />
           </Button>
-          <Button size="sm">
+          <Button type="button" size="sm" onClick={onRun} disabled={!onRun}>
             <Play className="size-4 mr-1" /> Run
           </Button>
         </div>

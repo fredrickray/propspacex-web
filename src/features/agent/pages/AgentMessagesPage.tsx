@@ -3,14 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Search,
-  Send,
-  Paperclip,
-  Calendar,
-  Video,
-  FileText,
-} from "lucide-react";
+import { Search, Send, Paperclip, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,7 +25,7 @@ function formatShortTime(iso: string) {
   }
 }
 
-const MessagesPage = () => {
+export default function AgentMessagesPage() {
   const searchParams = useSearchParams();
   const convParam = searchParams.get("conv");
   const { conversations, engagements, postMessage } = useCommunications();
@@ -75,7 +68,7 @@ const MessagesPage = () => {
 
   const send = () => {
     if (!selected) return;
-    postMessage(selected.id, "buyer", messageText);
+    postMessage(selected.id, "agent", messageText);
     setMessageText("");
   };
 
@@ -83,13 +76,12 @@ const MessagesPage = () => {
     <div className="flex h-[calc(100dvh-3.5rem)] min-h-[420px]">
       <div className="flex w-80 shrink-0 flex-col border-r border-border">
         <div className="border-b border-border p-4">
-          <h1 className="mb-3 text-xl font-bold text-foreground">Inquiries</h1>
+          <h1 className="mb-3 text-xl font-bold text-foreground">Inbox</h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search threads…" className="pl-9" disabled />
+            <Input placeholder="Search…" className="pl-9" disabled />
           </div>
         </div>
-
         <ScrollArea className="flex-1">
           <div className="p-2">
             {sorted.map((conv) => {
@@ -109,7 +101,7 @@ const MessagesPage = () => {
                     <Avatar className="size-10 shrink-0">
                       <AvatarImage src="/placeholder.svg" />
                       <AvatarFallback>
-                        {conv.agentName
+                        {conv.buyerName
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
@@ -117,7 +109,7 @@ const MessagesPage = () => {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="mb-0.5 flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">{conv.agentName}</span>
+                        <span className="text-sm font-medium text-foreground">{conv.buyerName}</span>
                         {last ? (
                           <span className="shrink-0 text-xs text-muted-foreground">
                             {formatShortTime(last.createdAtIso)}
@@ -142,39 +134,24 @@ const MessagesPage = () => {
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar className="size-10 shrink-0">
                   <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback>AG</AvatarFallback>
+                  <AvatarFallback>BY</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">{selected.agentName}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      Agent
+                    <span className="font-semibold text-foreground">{selected.buyerName}</span>
+                    <Badge variant="outline" className="text-xs">
+                      Buyer
                     </Badge>
                   </div>
-                  <p className="truncate text-sm text-muted-foreground">
-                    Regarding: {selected.propertyTitle}
-                  </p>
+                  <p className="truncate text-sm text-muted-foreground">{selected.propertyTitle}</p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" type="button" disabled>
-                  <Calendar className="mr-1 size-4" /> Schedule
-                </Button>
-                <Button size="sm" type="button" disabled>
-                  <Video className="mr-1 size-4" /> Video
-                </Button>
+              <div className="flex flex-wrap gap-2">
                 {engagement ? (
                   <Button variant="secondary" size="sm" asChild>
-                    <Link href={`/buyer/deals/${engagement.id}`}>
+                    <Link href={`/agent/deals/${engagement.id}`}>
                       <FileText className="mr-1 size-4" />
-                      Deal
-                    </Link>
-                  </Button>
-                ) : null}
-                {engagement?.escrowWalletId ? (
-                  <Button size="sm" asChild>
-                    <Link href={`/buyer/wallet?deal=${encodeURIComponent(engagement.escrowWalletId)}`}>
-                      Wallet / escrow
+                      Deal &amp; quote
                     </Link>
                   </Button>
                 ) : null}
@@ -186,21 +163,21 @@ const MessagesPage = () => {
                 {selected.messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.role === "buyer" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${msg.role === "agent" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`flex max-w-[70%] gap-2 ${msg.role === "buyer" ? "flex-row-reverse" : ""}`}
+                      className={`flex max-w-[70%] gap-2 ${msg.role === "agent" ? "flex-row-reverse" : ""}`}
                     >
-                      {msg.role === "agent" && (
+                      {msg.role === "buyer" && (
                         <Avatar className="size-8 shrink-0">
                           <AvatarImage src="/placeholder.svg" />
-                          <AvatarFallback>A</AvatarFallback>
+                          <AvatarFallback>B</AvatarFallback>
                         </Avatar>
                       )}
                       <div>
                         <div
                           className={`rounded-2xl px-4 py-2.5 ${
-                            msg.role === "buyer"
+                            msg.role === "agent"
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-foreground"
                           }`}
@@ -208,7 +185,7 @@ const MessagesPage = () => {
                           <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                         </div>
                         <p
-                          className={`mt-1 text-xs text-muted-foreground ${msg.role === "buyer" ? "text-right" : ""}`}
+                          className={`mt-1 text-xs text-muted-foreground ${msg.role === "agent" ? "text-right" : ""}`}
                         >
                           {formatShortTime(msg.createdAtIso)}
                         </p>
@@ -225,7 +202,7 @@ const MessagesPage = () => {
                   <Paperclip className="size-5" />
                 </Button>
                 <Input
-                  placeholder="Type your message…"
+                  placeholder="Reply as agent…"
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   className="flex-1"
@@ -244,12 +221,10 @@ const MessagesPage = () => {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">
-            No conversations yet. Contact an agent from a listing.
+            No threads yet.
           </div>
         )}
       </div>
     </div>
   );
-};
-
-export default MessagesPage;
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, Wallet, Bell, Shield, Camera } from "lucide-react";
+import Link from "next/link";
+import { User, Wallet, Bell, Shield, Camera, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { ThemeAppearanceSettings } from "@/components/settings/theme-appearance-settings";
 
 const tabs = [
   { id: "general", label: "General", icon: User },
+  { id: "appearance", label: "Appearance", icon: Sun },
   { id: "wallet", label: "Wallet & Security", icon: Wallet },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "privacy", label: "Privacy", icon: Shield },
@@ -63,6 +65,7 @@ const SettingsPage = () => {
         {/* Content */}
         <div className="flex-1 space-y-6">
           {activeTab === "general" && <GeneralSettings />}
+          {activeTab === "appearance" && <AppearanceSettings />}
           {activeTab === "wallet" && <WalletSettings />}
           {activeTab === "notifications" && <NotificationSettings />}
           {activeTab === "privacy" && <PrivacySettings />}
@@ -71,6 +74,20 @@ const SettingsPage = () => {
     </div>
   );
 };
+
+const AppearanceSettings = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Appearance</CardTitle>
+      <CardDescription>
+        Select light, dark, or match your system settings.
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ThemeAppearanceSettings />
+    </CardContent>
+  </Card>
+);
 
 const GeneralSettings = () => (
   <Card>
@@ -128,73 +145,27 @@ const GeneralSettings = () => (
 );
 
 const WalletSettings = () => (
-  <div className="space-y-6">
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle>Wallet Management</CardTitle>
-          <Badge className="bg-green-500/20 text-green-600 border-0">
-            Web3 Active
-          </Badge>
-        </div>
-        <CardDescription>
-          Connect your crypto wallet for proof of funds and smart contract
-          interactions.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4 text-white mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-500 rounded-full p-2">
-                <Wallet className="size-4" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">Connected Wallet</p>
-                <p className="font-mono text-sm">0x71C . . . 8A23 ◯</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-400">Network</p>
-              <p className="text-sm">● Ethereum Mainnet</p>
-            </div>
-            <Button variant="destructive" size="sm">
-              Disconnect
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <Shield className="size-4 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Two-Factor Auth</p>
-                <p className="text-xs text-muted-foreground">
-                  Extra layer of security
-                </p>
-              </div>
-            </div>
-            <Switch />
-          </div>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <Wallet className="size-4 text-orange-500" />
-              <div>
-                <p className="text-sm font-medium">Hardware Key</p>
-                <p className="text-xs text-muted-foreground">
-                  Ledger or Trezor
-                </p>
-              </div>
-            </div>
-            <Button variant="link" size="sm" className="text-primary">
-              Setup
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
+  <Card>
+    <CardHeader>
+      <CardTitle>Wallet & Escrow</CardTitle>
+      <CardDescription>
+        Wallet operations are managed on the dedicated wallet screen to keep balances, escrow
+        holds, and release actions in one place.
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="rounded-lg border border-border p-4">
+        <p className="font-medium text-foreground">Buyer release flow is active</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          You approve payout after confirming service completion. If there is a problem, open a
+          dispute before releasing funds.
+        </p>
+      </div>
+      <Button asChild className="w-full sm:w-auto">
+        <Link href="/buyer/wallet">Open wallet dashboard</Link>
+      </Button>
+    </CardContent>
+  </Card>
 );
 
 const NotificationSettings = () => (
