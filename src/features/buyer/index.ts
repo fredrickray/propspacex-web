@@ -18,4 +18,5 @@ export {
   SettingsPage,
   MessagesPage,
   ContactAgentPage,
+  BuyerWalletPage,
 } from "./pages";

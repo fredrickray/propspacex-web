@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,136 +13,76 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mail, Phone, Search, CalendarDays, MessageSquare } from "lucide-react";
+import { Mail, Phone, Search, CalendarDays, MessageSquare, FileText } from "lucide-react";
+import { useCommunications } from "@/features/communications/communications-context";
+import type { EngagementDealStatus } from "@/features/communications/communications-types";
 
-type LeadStatus = "new" | "contacted" | "viewing";
+function formatLeadDate(iso: string) {
+  try {
+    return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
 
-type Lead = {
-  id: string;
-  name: string;
-  property: string;
-  email: string;
-  phone: string;
-  source: string;
-  date: string;
-  status: LeadStatus;
-  avatarUrl?: string;
-};
+function intentLabel(intent: string | null) {
+  if (intent === "tour") return "Tour request";
+  if (intent === "offer") return "Offer discussion";
+  return "Inquiry";
+}
 
-const leads: Lead[] = [
-  {
-    id: "1",
-    name: "Ahmed Al-Rashid",
-    property: "Marina Bay Tower - Unit 1204",
-    email: "ahmed@email.com",
-    phone: "+971 50 123 4567",
-    source: "Website",
-    date: "Feb 27, 2026",
-    status: "new",
-    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
-  },
-  {
-    id: "2",
-    name: "Priya Sharma",
-    property: "Palm Jumeirah Villa #8",
-    email: "priya@email.com",
-    phone: "+971 55 234 5678",
-    source: "Referral",
-    date: "Feb 26, 2026",
-    status: "contacted",
-    avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-  },
-  {
-    id: "3",
-    name: "John Mitchell",
-    property: "Downtown Heights - Penthouse",
-    email: "john@email.com",
-    phone: "+971 52 345 6789",
-    source: "Website",
-    date: "Feb 25, 2026",
-    status: "viewing",
-    avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
-  },
-  {
-    id: "4",
-    name: "Fatima Hassan",
-    property: "Marina Bay Tower - Unit 804",
-    email: "fatima@email.com",
-    phone: "+971 56 456 7890",
-    source: "Social Media",
-    date: "Feb 25, 2026",
-    status: "new",
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-  },
-  {
-    id: "5",
-    name: "Mike Eissien",
-    property: "Downtown Heights - Penthouse",
-    email: "mike@email.com",
-    phone: "+971 56 456 7890",
-    source: "Social Media",
-    date: "Feb 25, 2026",
-    status: "new",
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-  },
-  {
-    id: "6",
-    name: "Yousef Al-Rashid",
-    property: "Marina Bay Tower - Unit 804",
-    email: "yousef@email.com",
-    phone: "+971 56 456 7890",
-    source: "Social Media",
-    date: "Feb 25, 2026",
-    status: "new",
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-  },
-  {
-    id: "7",
-    name: "Taha Al-Rashid",
-    property: "Downtown Heights - Penthouse",
-    email: "taha@email.com",
-    phone: "+971 56 456 7890",
-    source: "Social Media",
-    date: "Feb 25, 2026",
-    status: "new",
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-  },
-];
-
-const badgeVariant = (status: LeadStatus) => {
-  if (status === "new") return "default";
-  if (status === "contacted") return "secondary";
-  return "outline";
-};
+function stageBadge(status: EngagementDealStatus) {
+  switch (status) {
+    case "open":
+      return { label: "Awaiting quote", variant: "default" as const };
+    case "quoted":
+      return { label: "Quoted", variant: "secondary" as const };
+    case "accepted":
+      return { label: "Accepted", variant: "outline" as const };
+    case "funding_ready":
+      return { label: "Funding", variant: "outline" as const };
+    default:
+      return { label: status, variant: "outline" as const };
+  }
+}
 
 const LeadsPage = () => {
+  const { leads, engagements } = useCommunications();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | LeadStatus>("all");
+  const [stage, setStage] = useState<"all" | EngagementDealStatus>("all");
+
+  const engagementById = useMemo(
+    () => new Map(engagements.map((e) => [e.id, e])),
+    [engagements],
+  );
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return leads.filter((lead) => {
-      const statusMatch = status === "all" || lead.status === status;
-      const query = search.trim().toLowerCase();
+      const eng = engagementById.get(lead.engagementId);
+      const status = eng?.status ?? ("open" as EngagementDealStatus);
+      const stageMatch = stage === "all" || status === stage;
       const textMatch =
-        !query ||
-        lead.name.toLowerCase().includes(query) ||
-        lead.property.toLowerCase().includes(query);
-      return statusMatch && textMatch;
+        !q ||
+        lead.buyerName.toLowerCase().includes(q) ||
+        lead.propertyTitle.toLowerCase().includes(q) ||
+        lead.buyerEmail.toLowerCase().includes(q);
+      return stageMatch && textMatch;
     });
-  }, [search, status]);
+  }, [leads, engagementById, search, stage]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Lead Management</h1>
         <p className="text-muted-foreground">
-          Track and manage your property inquiries
+          Inquiries from contact forms and threads (demo: stored in this browser).
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -149,71 +90,95 @@ const LeadsPage = () => {
             className="pl-9"
           />
         </div>
-        <Select
-          value={status}
-          onValueChange={(value: "all" | LeadStatus) => setStatus(value)}
-        >
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="All Status" />
+        <Select value={stage} onValueChange={(value: "all" | EngagementDealStatus) => setStage(value)}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Stage" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="new">New</SelectItem>
-            <SelectItem value="contacted">Contacted</SelectItem>
-            <SelectItem value="viewing">Viewing</SelectItem>
+            <SelectItem value="all">All stages</SelectItem>
+            <SelectItem value="open">Awaiting quote</SelectItem>
+            <SelectItem value="quoted">Quoted</SelectItem>
+            <SelectItem value="funding_ready">Funding</SelectItem>
+            <SelectItem value="accepted">Accepted</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-3">
-        {filtered.map((lead) => (
-          <div
-            key={lead.id}
-            className="rounded-xl border border-border bg-card p-4 flex flex-col lg:flex-row lg:items-center gap-4"
-          >
-            <div className="flex items-start gap-3 min-w-0">
-              <Avatar className="size-10">
-                <AvatarImage src={lead.avatarUrl} />
-                <AvatarFallback>{lead.name.slice(0, 2)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground truncate">{lead.name}</p>
-                  <Badge variant={badgeVariant(lead.status)} className="capitalize">
-                    {lead.status}
-                  </Badge>
+        {filtered.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+            No leads match your filters. Submit a contact form as a buyer to create one.
+          </p>
+        ) : (
+          filtered.map((lead) => {
+            const eng = engagementById.get(lead.engagementId);
+            const status = eng?.status ?? "open";
+            const badge = stageBadge(status);
+            const tel = lead.phone.replace(/[^\d+]/g, "");
+            const canCall = tel.length > 3;
+
+            return (
+              <div
+                key={lead.id}
+                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 lg:flex-row lg:items-center"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <Avatar className="size-10">
+                    <AvatarImage src={undefined} />
+                    <AvatarFallback>{lead.buyerName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-semibold text-foreground">{lead.buyerName}</p>
+                      <Badge variant={badge.variant} className="capitalize">
+                        {badge.label}
+                      </Badge>
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">{lead.propertyTitle}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Mail className="size-3.5" />
+                        {lead.buyerEmail}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Phone className="size-3.5" />
+                        {lead.phone}
+                      </span>
+                      <span>Source: {intentLabel(lead.intent)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="size-3.5" />
+                        {formatLeadDate(lead.createdAtIso)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{lead.property}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Mail className="size-3.5" />
-                    {lead.email}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Phone className="size-3.5" />
-                    {lead.phone}
-                  </span>
-                  <span>Source: {lead.source}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarDays className="size-3.5" />
-                    {lead.date}
-                  </span>
+
+                <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+                  {canCall ? (
+                    <Button variant="outline" size="sm" className="gap-2" asChild>
+                      <a href={`tel:${tel}`}>
+                        <Phone className="size-4" />
+                        Call
+                      </a>
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <Link href={`/agent/messages?conv=${encodeURIComponent(lead.conversationId)}`}>
+                      <MessageSquare className="size-4" />
+                      Message
+                    </Link>
+                  </Button>
+                  <Button size="sm" className="gap-2" asChild>
+                    <Link href={`/agent/deals/${lead.engagementId}`}>
+                      <FileText className="size-4" />
+                      Deal
+                    </Link>
+                  </Button>
                 </div>
               </div>
-            </div>
-
-            <div className="lg:ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Phone className="size-4" />
-                Call
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <MessageSquare className="size-4" />
-                Message
-              </Button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </div>
   );

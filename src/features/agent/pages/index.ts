@@ -11,3 +11,7 @@ export { default as AddPropertyReviewPage } from "./AddPropertyReviewPage";
 export { default as LeadsPage } from "./LeadsPage";
 export { default as AnalyticsPage } from "./AnalyticsPage";
 export { default as AgentSettingsPage } from "./AgentSettingsPage";
+export { default as AgentWalletPage } from "./AgentWalletPage";
+export { default as AgentMessagesPage } from "./AgentMessagesPage";
+export { default as AgentDealsPage } from "./AgentDealsPage";
+export { default as AgentDealDetailPage } from "./AgentDealDetailPage";

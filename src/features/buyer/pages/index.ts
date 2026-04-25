@@ -6,3 +6,7 @@ export { default as SavedSearchesPage } from "./SavedSearchesPage";
 export { default as SettingsPage } from "./SettingsPage";
 export { default as MessagesPage } from "./MessagesPage";
 export { default as ContactAgentPage } from "./ContactAgentPage";
+export { default as BuyerWalletPage } from "./BuyerWalletPage";
+export { default as BuyerDealsPage } from "./BuyerDealsPage";
+export { default as BuyerDealDetailPage } from "./BuyerDealDetailPage";
+export { default as PaymentCallbackPage } from "./PaymentCallbackPage";

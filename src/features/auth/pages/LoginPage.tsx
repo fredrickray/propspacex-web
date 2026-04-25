@@ -15,6 +15,7 @@ import {
   AuthButton,
   AuthDivider,
   AuthFooter,
+  UserTypeToggle,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api, AppRole } from "@/lib/api";
@@ -32,6 +33,7 @@ declare global {
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isWalletLoading, setIsWalletLoading] = useState(false);
+  const [walletAppRole, setWalletAppRole] = useState<"buyer" | "agent">("buyer");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -99,7 +101,10 @@ const LoginPage = () => {
       const walletAddress = accounts?.[0];
       if (!walletAddress) throw new Error("No wallet account selected");
 
-      const nonceRes = await api.requestWeb3Nonce(walletAddress);
+      const nonceRes = await api.requestWeb3Nonce(
+        walletAddress,
+        walletAppRole,
+      );
       const messageToSign = nonceRes.nonce;
       if (!messageToSign) throw new Error("Failed to get nonce message");
 
@@ -283,6 +288,12 @@ const LoginPage = () => {
 
             <AuthDivider text="Or connect with" />
 
+            <UserTypeToggle
+              label="Sign in as"
+              value={walletAppRole}
+              onChange={setWalletAppRole}
+            />
+
             <AuthButton
               variant="outline"
               leftIcon={<Wallet className="size-5" />}
@@ -294,7 +305,8 @@ const LoginPage = () => {
             </AuthButton>
 
             <p className="text-xs text-muted-foreground text-center mt-3">
-              Web3 Ethereum
+              Choose the role that matches your account, then connect the wallet
+              you linked in settings.
             </p>
           </AuthCard>
         </div>
