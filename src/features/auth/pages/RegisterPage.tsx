@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Shield, Check, Wallet, AlertCircle } from "lucide-react";
+import { Shield, Check, Wallet, AlertCircle, ChevronDown } from "lucide-react";
 import {
   AuthLayout,
   AuthCard,
@@ -10,8 +10,8 @@ import {
   AuthButton,
   AuthDivider,
   AuthFooter,
-  UserTypeToggle,
 } from "../components";
+import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { signupSchema, type SignupFormData } from "../validations";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
@@ -31,6 +40,7 @@ declare global {
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isWalletLoading, setIsWalletLoading] = useState(false);
+  const [walletRoleDialogOpen, setWalletRoleDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -39,7 +49,6 @@ const RegisterPage = () => {
     handleSubmit,
     setError,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -47,8 +56,6 @@ const RegisterPage = () => {
       appRole: "buyer",
     },
   });
-
-  const userType = watch("appRole");
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
@@ -86,7 +93,7 @@ const RegisterPage = () => {
     }
   };
 
-  const handleWalletAuth = async () => {
+  const handleWalletAuth = async (walletRole: "buyer" | "agent") => {
     if (!window.ethereum) {
       toast({
         title: "Wallet not found",
@@ -96,6 +103,8 @@ const RegisterPage = () => {
       return;
     }
 
+    setWalletRoleDialogOpen(false);
+    setValue("appRole", walletRole, { shouldValidate: true });
     setIsWalletLoading(true);
     try {
       const accounts = (await window.ethereum.request({
@@ -105,7 +114,7 @@ const RegisterPage = () => {
       const walletAddress = accounts?.[0];
       if (!walletAddress) throw new Error("No wallet account selected");
 
-      const nonceRes = await api.requestWeb3Nonce(walletAddress, userType);
+      const nonceRes = await api.requestWeb3Nonce(walletAddress, walletRole);
       const messageToSign = nonceRes.nonce;
       if (!messageToSign) throw new Error("Failed to get nonce message");
 
@@ -203,14 +212,6 @@ const RegisterPage = () => {
                 </div>
               )}
 
-              <UserTypeToggle
-                value={userType}
-                onChange={(value) => {
-                  console.log("Selected role:", value);
-                  setValue("appRole", value, { shouldValidate: true });
-                }}
-              />
-
               <AuthInput
                 label="First Name"
                 type="text"
@@ -247,6 +248,37 @@ const RegisterPage = () => {
                 disabled={isLoading}
               />
 
+              <div className="space-y-1.5">
+                <label htmlFor="register-app-role" className="block text-sm font-medium text-foreground">
+                  Account role
+                </label>
+                <div className="relative">
+                  <select
+                    id="register-app-role"
+                    {...register("appRole")}
+                    disabled={isLoading}
+                    className={cn(
+                      "w-full h-12 pl-4 pr-12 rounded-lg border border-input bg-background appearance-none",
+                      "text-foreground",
+                      "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                      "transition-all duration-200 cursor-pointer",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                      errors.appRole && "border-destructive focus:ring-destructive",
+                    )}
+                  >
+                    <option value="buyer">Buyer</option>
+                    <option value="agent">Agent / Owner</option>
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden
+                  />
+                </div>
+                {errors.appRole?.message ? (
+                  <p className="text-sm text-destructive">{errors.appRole.message}</p>
+                ) : null}
+              </div>
+
               <AuthButton type="submit" isLoading={isLoading}>
                 Create Account
               </AuthButton>
@@ -257,7 +289,7 @@ const RegisterPage = () => {
             <AuthButton
               variant="outline"
               leftIcon={<Wallet className="size-5" />}
-              onClick={handleWalletAuth}
+              onClick={() => setWalletRoleDialogOpen(true)}
               isLoading={isWalletLoading}
               disabled={isLoading}
             >
@@ -340,6 +372,37 @@ const RegisterPage = () => {
       </div>
 
       <AuthFooter />
+
+      <Dialog open={walletRoleDialogOpen} onOpenChange={setWalletRoleDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create account as</DialogTitle>
+            <DialogDescription>
+              Choose Buyer or Agent before we connect your wallet and request a signature.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={isWalletLoading}
+              onClick={() => void handleWalletAuth("buyer")}
+            >
+              Buyer
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={isWalletLoading}
+              onClick={() => void handleWalletAuth("agent")}
+            >
+              Agent / Owner
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthLayout>
   );
 };

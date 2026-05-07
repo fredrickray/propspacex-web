@@ -9,18 +9,25 @@ import { Mail, Lock, Fingerprint, Shield, Wallet } from "lucide-react";
 import {
   AuthLayout,
   AuthCard,
-  AuthCardHeader,
   AuthCardFooter,
   AuthInput,
   AuthButton,
   AuthDivider,
   AuthFooter,
-  UserTypeToggle,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api, AppRole } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema, type LoginFormData } from "../validations";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
@@ -33,7 +40,7 @@ declare global {
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isWalletLoading, setIsWalletLoading] = useState(false);
-  const [walletAppRole, setWalletAppRole] = useState<"buyer" | "agent">("buyer");
+  const [walletRoleDialogOpen, setWalletRoleDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -82,7 +89,7 @@ const LoginPage = () => {
     }
   };
 
-  const handleWalletAuth = async () => {
+  const handleWalletAuth = async (walletAppRole: "buyer" | "agent") => {
     if (!window.ethereum) {
       toast({
         title: "Wallet not found",
@@ -92,6 +99,7 @@ const LoginPage = () => {
       return;
     }
 
+    setWalletRoleDialogOpen(false);
     setIsWalletLoading(true);
     try {
       const accounts = (await window.ethereum.request({
@@ -288,16 +296,10 @@ const LoginPage = () => {
 
             <AuthDivider text="Or connect with" />
 
-            <UserTypeToggle
-              label="Sign in as"
-              value={walletAppRole}
-              onChange={setWalletAppRole}
-            />
-
             <AuthButton
               variant="outline"
               leftIcon={<Wallet className="size-5" />}
-              onClick={handleWalletAuth}
+              onClick={() => setWalletRoleDialogOpen(true)}
               isLoading={isWalletLoading}
               disabled={isLoading}
             >
@@ -305,8 +307,7 @@ const LoginPage = () => {
             </AuthButton>
 
             <p className="text-xs text-muted-foreground text-center mt-3">
-              Choose the role that matches your account, then connect the wallet
-              you linked in settings.
+              You’ll choose Buyer or Agent right before connecting your wallet.
             </p>
           </AuthCard>
         </div>
@@ -337,6 +338,37 @@ const LoginPage = () => {
       </div>
 
       <AuthFooter />
+
+      <Dialog open={walletRoleDialogOpen} onOpenChange={setWalletRoleDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Continue as</DialogTitle>
+            <DialogDescription>
+              Pick the role that matches your PropSpace account. We use this when requesting your wallet signature.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={isWalletLoading}
+              onClick={() => void handleWalletAuth("buyer")}
+            >
+              Buyer
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={isWalletLoading}
+              onClick={() => void handleWalletAuth("agent")}
+            >
+              Agent / Owner
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthLayout>
   );
 };
