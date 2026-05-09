@@ -12,9 +12,9 @@ function BuyerShell({ children }: { children: React.ReactNode }) {
   const { collapsed, toggleSidebar } = useDashboardSidebar();
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <BuyerSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
           <Button
             type="button"
@@ -33,7 +33,7 @@ function BuyerShell({ children }: { children: React.ReactNode }) {
             Menu
           </span>
         </header>
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

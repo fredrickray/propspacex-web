@@ -90,7 +90,7 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           const link = (
@@ -124,7 +124,7 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
         })}
       </nav>
 
-      <div className="space-y-1 border-t border-border p-4">
+      <div className="mt-auto space-y-1 border-t border-border p-4">
         {bottomItems.map((item) => {
           const link = (
             <Link
@@ -171,7 +171,7 @@ const BuyerSidebar = () => {
     <>
       <aside
         className={cn(
-          "hidden min-h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-in-out lg:flex",
+          "hidden h-screen shrink-0 flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-200 ease-in-out lg:flex",
           collapsed ? "w-[4.5rem]" : "w-64",
         )}
       >
