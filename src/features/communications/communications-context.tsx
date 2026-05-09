@@ -80,7 +80,7 @@ function defaultCommState(): CommState {
       {
         id: "m3",
         role: "agent",
-        text: "I've quoted $150.00 (platform fee $7.50) for the consultation. Please review under Deals.",
+        text: "I've quoted NGN 150.00 (platform fee NGN 7.50) for the consultation. Please review under Deals.",
         createdAtIso: "2026-04-02T09:00:00.000Z",
       },
     ],
@@ -147,7 +147,7 @@ type CommunicationsContextValue = {
   }) => { conversationId: string; engagementId: string };
   agentQuoteEngagement: (
     engagementId: string,
-    input: { amountDollars: number; platformFeeDollars: number; note?: string },
+    input: { amountNaira: number; platformFeeNaira: number; note?: string },
   ) => void;
   buyerAcceptEngagement: (engagementId: string) => string | null;
   addSavedSearch: (input: Omit<SavedSearchRecord, "id" | "createdAtIso">) => void;
@@ -280,10 +280,10 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
   const agentQuoteEngagement = useCallback(
     (
       engagementId: string,
-      input: { amountDollars: number; platformFeeDollars: number; note?: string },
+      input: { amountNaira: number; platformFeeNaira: number; note?: string },
     ) => {
-      const amountCents = Math.round(input.amountDollars * 100);
-      const platformFeeCents = Math.round(input.platformFeeDollars * 100);
+      const amountCents = Math.round(input.amountNaira * 100);
+      const platformFeeCents = Math.round(input.platformFeeNaira * 100);
       const note = input.note?.trim();
       setState((prev) => {
         const eng = prev.engagements.find((e) => e.id === engagementId);
@@ -294,7 +294,7 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
           role: "agent",
           text:
             (note ? `${note}\n\n` : "") +
-            `Quoted total ${(amountCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })} (platform fee ${(platformFeeCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })}).`,
+            `Quoted total ${(amountCents / 100).toLocaleString("en-NG", { style: "currency", currency: "NGN" })} (platform fee ${(platformFeeCents / 100).toLocaleString("en-NG", { style: "currency", currency: "NGN" })}).`,
           createdAtIso: nowIso(),
         };
         return {

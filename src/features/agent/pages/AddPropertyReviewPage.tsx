@@ -55,7 +55,6 @@ const AddPropertyReviewPage = () => {
 
   const mapCurrencyToApi = (value?: string): Currency => {
     const raw = (value ?? "").toUpperCase();
-    if (raw === Currency.USD) return Currency.USD;
     if (raw === Currency.ETH) return Currency.ETH;
     if (raw === Currency.USDT) return Currency.USDT;
     return Currency.NGN;

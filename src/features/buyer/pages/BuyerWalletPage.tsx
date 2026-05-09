@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownLeft,
-  CircleDollarSign,
   CreditCard,
   HandCoins,
   History,
@@ -34,13 +33,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { useEscrowSimulation } from "@/features/payments/escrow-context";
+import { api } from "@/lib/api";
 import { FundEscrowDialog } from "@/features/payments/components/FundEscrowDialog";
 import {
   buyerDealSummary,
   buyerStatusMeta,
   formatMoney,
-  toBuyerEscrowDeal,
 } from "@/features/payments/escrow-format";
 import type { BuyerEscrowDeal, EscrowDealStatus } from "@/features/payments/types";
 
@@ -50,9 +48,75 @@ const terminalStatuses: EscrowDealStatus[] = ["released", "refunded"];
 export default function BuyerWalletPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { state, deals, buyerRelease, topUpBuyerWallet, resetSimulation } = useEscrowSimulation();
+  const [loading, setLoading] = useState(true);
+  const [walletAvailableCents, setWalletAvailableCents] = useState(0);
+  const [deals, setDeals] = useState<BuyerEscrowDeal[]>([]);
 
-  const buyerDeals = useMemo(() => deals.map(toBuyerEscrowDeal), [deals]);
+  const parseMinor = (value: unknown): number => {
+    if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : 0;
+    if (typeof value === "string") {
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.round(n) : 0;
+    }
+    return 0;
+  };
+
+  const mapEscrowStatus = (status: unknown): EscrowDealStatus => {
+    const s = String(status ?? "").toLowerCase().trim();
+    if (s.includes("held")) return "awaiting_funding";
+    if (s.includes("in_progress")) return "in_progress";
+    if (s.includes("pending_buyer_release")) return "pending_buyer_release";
+    if (s.includes("released")) return "released";
+    if (s.includes("refunded")) return "refunded";
+    return "awaiting_funding";
+  };
+
+  const loadRemoteData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [wallet, escrows] = await Promise.all([
+        api.getMyWallet(),
+        api.listEscrowsByUser({ role: 1, page: 1, limit: 100 }),
+      ]);
+      setWalletAvailableCents(parseMinor(wallet.wallet?.available_balance_minor));
+      const rows = (escrows.escrows ?? []).map((row) => {
+        const record = row as Record<string, unknown>;
+        const status = mapEscrowStatus(record.status);
+        return {
+          id: String(record.escrow_id ?? ""),
+          title: String(record.deal_ref ?? "Escrow deal"),
+          agentName: String(record.agent_user_id ?? "Agent"),
+          amountCents: parseMinor(record.amount_minor),
+          platformFeeCents: parseMinor(record.platform_fee_minor),
+          status,
+          fundingMethod: status === "awaiting_funding" ? null : "card",
+          fundedAtLabel:
+            typeof record.funded_at === "string"
+              ? new Date(record.funded_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—",
+        } satisfies BuyerEscrowDeal;
+      });
+      setDeals(rows);
+    } catch (error) {
+      toast({
+        title: "Unable to load wallet data",
+        description: error instanceof Error ? error.message : "Failed to fetch wallet/escrow data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void loadRemoteData();
+  }, [loadRemoteData]);
+
+  const buyerDeals = useMemo(() => deals, [deals]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addAmount, setAddAmount] = useState("");
@@ -88,7 +152,7 @@ export default function BuyerWalletPage() {
     [activeFundedDeals],
   );
 
-  const confirmAddFunds = () => {
+  const confirmAddFunds = async () => {
     const raw = parseFloat(addAmount.replace(/[^0-9.]/g, ""));
     if (!Number.isFinite(raw) || raw <= 0) {
       toast({
@@ -99,24 +163,71 @@ export default function BuyerWalletPage() {
       return;
     }
     const cents = Math.round(raw * 100);
-    topUpBuyerWallet(cents);
-    setAddOpen(false);
-    setAddAmount("");
-    toast({
-      title: "Funds added (demo)",
-      description: `${formatMoney(cents)} was credited to your available balance. In production this would run a Paystack wallet top-up flow.`,
-    });
+    try {
+      const callback_url =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/buyer/payment/callback?flow=wallet_topup`
+          : undefined;
+      const intent = await api.createWalletTopupIntent({
+        amount_minor: cents,
+        currency_code: 1,
+        idempotency_key: `topup_${Date.now()}`,
+        callback_url,
+      });
+      if (intent.payment_link && typeof window !== "undefined") {
+        window.location.href = intent.payment_link;
+        return;
+      }
+      await loadRemoteData();
+      setAddOpen(false);
+      setAddAmount("");
+      toast({
+        title: "Funds added",
+        description: `${formatMoney(cents)} was credited to your available balance.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Top-up failed",
+        description: error instanceof Error ? error.message : "Unable to initialize wallet top-up.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const confirmRelease = () => {
+  const formatAmountInput = (value: string) => {
+    const sanitized = value.replace(/[^\d.]/g, "");
+    if (!sanitized) return "";
+    const [rawWhole = "", ...rest] = sanitized.split(".");
+    const rawFraction = rest.join("");
+    const whole = rawWhole.replace(/^0+(?=\d)/, "");
+    const groupedWhole = (whole || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const hasDot = sanitized.includes(".");
+    const fraction = rawFraction.slice(0, 2);
+    if (hasDot) return `${groupedWhole}.${fraction}`;
+    return groupedWhole;
+  };
+
+  const confirmRelease = async () => {
     if (!releaseTarget) return;
-    buyerRelease(releaseTarget.id);
-    const net = releaseTarget.amountCents - releaseTarget.platformFeeCents;
-    toast({
-      title: "Payment released",
-      description: `${formatMoney(releaseTarget.amountCents)} left escrow (${formatMoney(net)} net to ${releaseTarget.agentName} after platform fee).`,
-    });
-    setReleaseTarget(null);
+    try {
+      await api.releaseEscrow({
+        escrow_id: releaseTarget.id,
+        idempotency_key: `release_${releaseTarget.id}_${Date.now()}`,
+      });
+      await loadRemoteData();
+      const net = releaseTarget.amountCents - releaseTarget.platformFeeCents;
+      toast({
+        title: "Payment released",
+        description: `${formatMoney(releaseTarget.amountCents)} left escrow (${formatMoney(net)} net to ${releaseTarget.agentName} after platform fee).`,
+      });
+      setReleaseTarget(null);
+    } catch (error) {
+      toast({
+        title: "Release failed",
+        description: error instanceof Error ? error.message : "Unable to release escrow.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -170,11 +281,11 @@ export default function BuyerWalletPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Available balance
             </CardTitle>
-            <CircleDollarSign className="size-4 text-muted-foreground" />
+            <Wallet className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold tracking-tight tabular-nums">
-              {formatMoney(state.buyerAvailableCents)}
+              {formatMoney(walletAvailableCents)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Ready to reserve for agent services (wallet path)
@@ -363,21 +474,17 @@ export default function BuyerWalletPage() {
         </Card>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
-        Demo state is saved in this browser.{" "}
-        <button
-          type="button"
-          className="underline underline-offset-2 hover:text-foreground"
-          onClick={() => {
-            resetSimulation();
-            toast({ title: "Demo reset", description: "Wallet and escrow restored to defaults." });
-          }}
-        >
-          Reset demo data
-        </button>
-      </p>
+      {loading && <p className="text-center text-xs text-muted-foreground">Loading wallet data...</p>}
 
-      <FundEscrowDialog deal={fundTarget} open={!!fundTarget} onOpenChange={(o) => !o && setFundTarget(null)} />
+      <FundEscrowDialog
+        deal={fundTarget}
+        open={!!fundTarget}
+        onOpenChange={(o) => !o && setFundTarget(null)}
+        availableCents={walletAvailableCents}
+        onSuccessfulFunding={() => {
+          void loadRemoteData();
+        }}
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
@@ -390,13 +497,13 @@ export default function BuyerWalletPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="add-amount">Amount (USD)</Label>
+            <Label htmlFor="add-amount">Amount (NGN)</Label>
             <Input
               id="add-amount"
               inputMode="decimal"
-              placeholder="250.00"
+              placeholder="250,000.00"
               value={addAmount}
-              onChange={(e) => setAddAmount(e.target.value)}
+              onChange={(e) => setAddAmount(formatAmountInput(e.target.value))}
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

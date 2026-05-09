@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 /**
  * Paystack (and similar) redirect target after checkout.
@@ -13,8 +15,43 @@ import { Button } from "@/components/ui/button";
 export default function PaymentCallbackPage() {
   const sp = useSearchParams();
   const reference = sp.get("reference") ?? sp.get("trxref") ?? "";
+  const flow = sp.get("flow") ?? "escrow";
   const status = (sp.get("status") ?? "").toLowerCase();
-  const success = status === "success" || status === "completed" || (!status && reference);
+  const [verified, setVerified] = useState<null | boolean>(null);
+  const [message, setMessage] = useState<string>("");
+  const success =
+    verified ?? status === "success" || status === "completed" || (!status && reference);
+
+  useEffect(() => {
+    let cancelled = false;
+    const verify = async () => {
+      if (!reference) return;
+      try {
+        if (flow === "wallet_topup") {
+          const response = await api.verifyWalletTopupByReference("paystack", reference);
+          if (!cancelled) {
+            setVerified(response.status === "success");
+            setMessage(response.message);
+          }
+          return;
+        }
+        const response = await api.verifyEscrowPaymentByReference("paystack", reference);
+        if (!cancelled) {
+          setVerified(response.status === "success");
+          setMessage(response.message);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setVerified(false);
+          setMessage(error instanceof Error ? error.message : "Payment verification failed.");
+        }
+      }
+    };
+    void verify();
+    return () => {
+      cancelled = true;
+    };
+  }, [flow, reference]);
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-6 p-6">
@@ -29,8 +66,8 @@ export default function PaymentCallbackPage() {
               </p>
             ) : null}
             <p>
-              In production your backend verifies this reference with Paystack, then credits escrow
-              or wallet. For now continue in the wallet demo.
+              {message ||
+                "Your backend verification succeeded. Escrow or wallet balance will update from settlement flow."}
             </p>
           </AlertDescription>
         </Alert>
@@ -39,8 +76,8 @@ export default function PaymentCallbackPage() {
           <XCircle className="size-5" />
           <AlertTitle>Payment not completed</AlertTitle>
           <AlertDescription>
-            {status ? `Status: ${status}.` : "No status returned."} You can retry from the wallet
-            flow.
+            {message || (status ? `Status: ${status}.` : "No status returned.")} You can retry from
+            the wallet flow.
           </AlertDescription>
         </Alert>
       )}
