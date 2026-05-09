@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowUpRight,
   Banknote,
-  CircleDollarSign,
   CreditCard,
   History,
   Lock,
@@ -32,12 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { useEscrowSimulation } from "@/features/payments/escrow-context";
+import { api } from "@/lib/api";
 import {
   agentDealSummary,
   agentStatusMeta,
   formatMoney,
-  toAgentEscrowDeal,
 } from "@/features/payments/escrow-format";
 import type { AgentEscrowDeal, EscrowDealStatus } from "@/features/payments/types";
 
@@ -51,10 +49,84 @@ const terminalStatuses: EscrowDealStatus[] = ["released", "refunded"];
 
 export default function AgentWalletPage() {
   const { toast } = useToast();
-  const { state, deals, agentMarkComplete, requestAgentWithdrawal, resetSimulation } =
-    useEscrowSimulation();
+  const [loading, setLoading] = useState(true);
+  const [deals, setDeals] = useState<AgentEscrowDeal[]>([]);
+  const [walletAvailableCents, setWalletAvailableCents] = useState(0);
+  const [pendingWithdrawalCents, setPendingWithdrawalCents] = useState(0);
 
-  const agentDeals = useMemo(() => deals.map(toAgentEscrowDeal), [deals]);
+  const parseMinor = (value: unknown): number => {
+    if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : 0;
+    if (typeof value === "string") {
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.round(n) : 0;
+    }
+    return 0;
+  };
+
+  const mapEscrowStatus = (status: unknown): EscrowDealStatus => {
+    const s = String(status ?? "").toLowerCase().trim();
+    if (s.includes("held")) return "awaiting_funding";
+    if (s.includes("in_progress")) return "in_progress";
+    if (s.includes("pending_buyer_release")) return "pending_buyer_release";
+    if (s.includes("released")) return "released";
+    if (s.includes("refunded")) return "refunded";
+    return "awaiting_funding";
+  };
+
+  const loadRemoteData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [wallet, escrows, withdrawals] = await Promise.all([
+        api.getMyWallet(),
+        api.listEscrowsByUser({ role: 2, page: 1, limit: 100 }),
+        api.listMyWithdrawals({ page: 1, limit: 100 }),
+      ]);
+      setWalletAvailableCents(parseMinor(wallet.wallet?.available_balance_minor));
+      const withdrawalTotal = (withdrawals.withdrawals ?? []).reduce((sum, row) => {
+        const record = row as Record<string, unknown>;
+        const lifecycle = String(record.lifecycle_state ?? "").toLowerCase();
+        if (lifecycle !== "pending" && lifecycle !== "processing") return sum;
+        return sum + parseMinor(record.amount_minor);
+      }, 0);
+      setPendingWithdrawalCents(withdrawalTotal);
+      const rows = (escrows.escrows ?? []).map((row) => {
+        const record = row as Record<string, unknown>;
+        const status = mapEscrowStatus(record.status);
+        return {
+          id: String(record.escrow_id ?? ""),
+          title: String(record.deal_ref ?? "Escrow deal"),
+          buyerName: String(record.buyer_user_id ?? "Buyer"),
+          amountCents: parseMinor(record.amount_minor),
+          platformFeeCents: parseMinor(record.platform_fee_minor),
+          status,
+          fundingMethod: status === "awaiting_funding" ? null : "card",
+          fundedAtLabel:
+            typeof record.funded_at === "string"
+              ? new Date(record.funded_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—",
+        } satisfies AgentEscrowDeal;
+      });
+      setDeals(rows);
+    } catch (error) {
+      toast({
+        title: "Unable to load earnings data",
+        description: error instanceof Error ? error.message : "Failed to fetch wallet/escrows.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void loadRemoteData();
+  }, [loadRemoteData]);
+
+  const agentDeals = useMemo(() => deals, [deals]);
 
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -77,15 +149,27 @@ export default function AgentWalletPage() {
     [agentDeals],
   );
 
-  const markComplete = (id: string) => {
-    agentMarkComplete(id);
-    toast({
-      title: "Marked complete",
-      description: "The buyer can release escrow when they’re satisfied.",
-    });
+  const markComplete = async (id: string) => {
+    try {
+      await api.markEscrowServiceComplete({
+        escrow_id: id,
+        idempotency_key: `mark_complete_${id}_${Date.now()}`,
+      });
+      await loadRemoteData();
+      toast({
+        title: "Marked complete",
+        description: "The buyer can release escrow when they’re satisfied.",
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Unable to mark service complete.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const confirmWithdraw = () => {
+  const confirmWithdraw = async () => {
     const raw = parseFloat(withdrawAmount.replace(/[^0-9.]/g, ""));
     if (!Number.isFinite(raw) || raw <= 0) {
       toast({
@@ -96,7 +180,7 @@ export default function AgentWalletPage() {
       return;
     }
     const cents = Math.round(raw * 100);
-    const spendable = state.agentAvailableCents - state.agentPendingWithdrawCents;
+    const spendable = walletAvailableCents - pendingWithdrawalCents;
     if (cents > spendable) {
       toast({
         title: "Insufficient balance",
@@ -105,16 +189,31 @@ export default function AgentWalletPage() {
       });
       return;
     }
-    requestAgentWithdrawal(cents);
-    setWithdrawOpen(false);
-    setWithdrawAmount("");
-    toast({
-      title: "Withdrawal requested (demo)",
-      description: `${formatMoney(cents)} will appear as pending until payout rails are connected.`,
-    });
+    try {
+      await api.requestWithdrawal({
+        amount_minor: cents,
+        bank_code: "000",
+        account_number: "0000000000",
+        account_name: "Agent Account",
+        idempotency_key: `wd_${Date.now()}`,
+      });
+      await loadRemoteData();
+      setWithdrawOpen(false);
+      setWithdrawAmount("");
+      toast({
+        title: "Withdrawal requested",
+        description: `${formatMoney(cents)} was submitted for payout processing.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Withdrawal failed",
+        description: error instanceof Error ? error.message : "Unable to request withdrawal.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const spendableCents = state.agentAvailableCents - state.agentPendingWithdrawCents;
+  const spendableCents = walletAvailableCents - pendingWithdrawalCents;
 
   return (
     <div className="max-w-5xl space-y-8">
@@ -146,7 +245,7 @@ export default function AgentWalletPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Available</CardTitle>
-            <CircleDollarSign className="size-4 text-muted-foreground" />
+            <Banknote className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight tabular-nums">
@@ -185,7 +284,7 @@ export default function AgentWalletPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight tabular-nums">
-              {formatMoney(state.agentPendingWithdrawCents)}
+              {formatMoney(pendingWithdrawalCents)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">On the way to your bank (demo)</p>
           </CardContent>
@@ -293,19 +392,7 @@ export default function AgentWalletPage() {
         </Card>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
-        Demo state is saved in this browser.{" "}
-        <button
-          type="button"
-          className="underline underline-offset-2 hover:text-foreground"
-          onClick={() => {
-            resetSimulation();
-            toast({ title: "Demo reset", description: "Wallet and escrow restored to defaults." });
-          }}
-        >
-          Reset demo data
-        </button>
-      </p>
+      {loading && <p className="text-center text-xs text-muted-foreground">Loading wallet data...</p>}
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
         <DialogContent>
@@ -317,7 +404,7 @@ export default function AgentWalletPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="wd-amount">Amount (USD)</Label>
+            <Label htmlFor="wd-amount">Amount (NGN)</Label>
             <Input
               id="wd-amount"
               inputMode="decimal"

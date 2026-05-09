@@ -81,7 +81,7 @@ export interface IPropertyAmenties {
 }
 
 export enum Currency {
-  USD = "USD",
+  NAIRA = "NGN",
   NGN = "NGN",
   ETH = "ETH",
   USDT = "USDT",
@@ -105,6 +105,58 @@ export interface Web3NonceResponse {
   success: boolean;
   message: string;
   nonce?: string;
+}
+
+export interface EscrowPaymentIntentResponse {
+  success: boolean;
+  message: string;
+  payment_id: string;
+  provider_reference: string;
+  payment_link: string;
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  message: string;
+  payment_id: string;
+  provider_reference: string;
+  status: string;
+  escrow_id?: string;
+  user_id?: string;
+}
+
+export interface WalletResponse {
+  success: boolean;
+  message: string;
+  wallet?: {
+    wallet_id: string;
+    user_id: string;
+    total_balance_minor: number | string;
+    available_balance_minor: number | string;
+    held_balance_minor: number | string;
+  };
+}
+
+export interface EscrowListResponse {
+  success: boolean;
+  escrows?: Array<Record<string, unknown>>;
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    total_pages?: number;
+  };
+}
+
+export interface WithdrawalListResponse {
+  success: boolean;
+  withdrawals?: Array<Record<string, unknown>>;
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    total_pages?: number;
+  };
 }
 
 export type CreatePropertyRequest = {
@@ -494,6 +546,146 @@ class ApiClient {
     await this.request(`/agents/properties/${id}`, {
       method: "DELETE",
     });
+  }
+
+  async createEscrowPaymentIntent(input: {
+    escrow_id: string;
+    amount_minor: number;
+    currency_code: number;
+    idempotency_key: string;
+    provider?: string;
+    callback_url?: string;
+  }): Promise<EscrowPaymentIntentResponse> {
+    const profile = this.getProfile();
+    return this.request<EscrowPaymentIntentResponse>("/payments/intent", {
+      method: "POST",
+      body: JSON.stringify({
+        buyer_user_id: profile?.userId,
+        email: profile?.email,
+        provider: input.provider ?? "paystack",
+        escrow_id: input.escrow_id,
+        amount_minor: input.amount_minor,
+        currency_code: input.currency_code,
+        idempotency_key: input.idempotency_key,
+        purpose: 1,
+        callback_url: input.callback_url,
+      }),
+    });
+  }
+
+  async verifyEscrowPaymentByReference(
+    provider: string,
+    reference: string,
+  ): Promise<VerifyPaymentResponse> {
+    return this.request<VerifyPaymentResponse>("/payments/verify", {
+      method: "POST",
+      body: JSON.stringify({ provider, reference }),
+    });
+  }
+
+  async createWalletTopupIntent(input: {
+    amount_minor: number;
+    currency_code: number;
+    idempotency_key: string;
+    provider?: string;
+    callback_url?: string;
+  }): Promise<EscrowPaymentIntentResponse> {
+    const profile = this.getProfile();
+    return this.request<EscrowPaymentIntentResponse>("/payments/wallet-topup/intent", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: profile?.userId,
+        email: profile?.email,
+        provider: input.provider ?? "paystack",
+        amount_minor: input.amount_minor,
+        currency_code: input.currency_code,
+        idempotency_key: input.idempotency_key,
+        callback_url: input.callback_url,
+      }),
+    });
+  }
+
+  async verifyWalletTopupByReference(
+    provider: string,
+    reference: string,
+  ): Promise<VerifyPaymentResponse> {
+    return this.request<VerifyPaymentResponse>("/payments/wallet-topup/verify", {
+      method: "POST",
+      body: JSON.stringify({ provider, reference }),
+    });
+  }
+
+  async releaseEscrow(input: { escrow_id: string; idempotency_key: string; note?: string }) {
+    const profile = this.getProfile();
+    return this.request(`/escrows/${input.escrow_id}/release`, {
+      method: "POST",
+      body: JSON.stringify({
+        buyer_user_id: profile?.userId,
+        idempotency_key: input.idempotency_key,
+        note: input.note,
+      }),
+    });
+  }
+
+  async markEscrowServiceComplete(input: {
+    escrow_id: string;
+    idempotency_key: string;
+    note?: string;
+  }) {
+    const profile = this.getProfile();
+    return this.request(`/escrows/${input.escrow_id}/mark-complete`, {
+      method: "POST",
+      body: JSON.stringify({
+        agent_user_id: profile?.userId,
+        idempotency_key: input.idempotency_key,
+        note: input.note,
+      }),
+    });
+  }
+
+  async requestWithdrawal(input: {
+    amount_minor: number;
+    bank_code: string;
+    account_number: string;
+    account_name: string;
+    idempotency_key: string;
+  }) {
+    return this.request("/wallets/withdrawals", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async getMyWallet(): Promise<WalletResponse> {
+    return this.request<WalletResponse>("/wallets/me");
+  }
+
+  async listEscrowsByUser(input?: {
+    role?: number;
+    status?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<EscrowListResponse> {
+    const query = new URLSearchParams();
+    query.set("page", String(input?.page ?? 1));
+    query.set("limit", String(input?.limit ?? 50));
+    if (typeof input?.role === "number") query.set("role", String(input.role));
+    if (typeof input?.status === "number") query.set("status", String(input.status));
+    const qs = query.toString();
+    return this.request<EscrowListResponse>(`/escrows${qs ? `?${qs}` : ""}`);
+  }
+
+  async listMyWithdrawals(input?: {
+    status?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<WithdrawalListResponse> {
+    const query = new URLSearchParams();
+    query.set("page", String(input?.page ?? 1));
+    query.set("limit", String(input?.limit ?? 50));
+    if (typeof input?.status === "number") query.set("status", String(input.status));
+    const qs = query.toString();
+    return this.request<WithdrawalListResponse>(`/wallets/withdrawals/me?${qs}`);
   }
 }
 

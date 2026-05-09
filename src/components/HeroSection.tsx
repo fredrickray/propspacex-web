@@ -116,7 +116,7 @@ const HeroSection = () => {
                 </label>
                 <div className="flex items-center gap-2 bg-background rounded-lg px-3 h-12">
                   <span className="text-sm font-medium text-foreground">
-                    $100k
+                    NGN 100k
                   </span>
                   <div className="flex-1 h-1 bg-muted rounded-full relative mx-2">
                     <div className="absolute left-[20%] right-[30%] top-0 bottom-0 bg-primary rounded-full" />
@@ -124,7 +124,7 @@ const HeroSection = () => {
                     <div className="absolute right-[30%] top-1/2 -translate-y-1/2 size-3 bg-primary rounded-full shadow cursor-pointer" />
                   </div>
                   <span className="text-sm font-medium text-foreground">
-                    $5M
+                    NGN 5M
                   </span>
                 </div>
               </div>

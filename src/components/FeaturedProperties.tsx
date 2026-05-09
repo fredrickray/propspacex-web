@@ -7,7 +7,7 @@ const FeaturedProperties = () => {
     {
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuBmKXTV0IRa29c4dhKqFmYJs6hl880WgeQr1K_kjo7AJ3gcuAV3mmFPyjTegJXPEGzoCvkrUA00rW35x46m2ggoeOd87g7vfvX7I1o_-EKVJFi_sJFOu3ZssWHUR-Ot908yi_4HphfvxNjuCF0xGGzIQQnQaq-W-Vzs72WGm3V6gfunBuDs9LUiIlsJsXo47u7V_lyEnbH9PcO9JLnLqiBJbpIo0MEPOm9NSWSdHIknGKpsE-pgeus-NxaJ8WfdpkQ6nHA-BUowOQ",
-      price: "$2,450,000",
+      price: "NGN 2,450,000",
       title: "Modern Highland Estate",
       location: "Beverly Hills, CA 90210",
       beds: 5,
@@ -18,7 +18,7 @@ const FeaturedProperties = () => {
     {
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuAd-ZO3Q_-zJB1M5f8_S9DjgAhPs-NRE_dZi2gYD1LjDfa1f3tbSZdrWJDLdPBtHQwv_tJJYIEOZLS20lthnQFvUxh4L075pqfSySmMO1TkmARaZBq1kDsUC6W8fBjO00YGTdb-D-CuhW9jiisSqZDEmFQyDqD--qEPLznEwdcxzFuoua17RJaU386IchHC2KnSolzVB7kn2Kw3v6ExXc48xvp-Goj6B-kA0Csl5KnB3sKrD4flxVgBuSjBRK1INA5Cblz6FuCAAA",
-      price: "$890,000",
+      price: "NGN 890,000",
       title: "Sunnyvale Garden Home",
       location: "Austin, TX 78701",
       beds: 3,
@@ -29,7 +29,7 @@ const FeaturedProperties = () => {
     {
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuBlPZSgl4RnxcHJFKt_GF2B4E2UQ8fr4oqa8gBQBBPxu4roMjIz3qvBDIbo6CzZlti5VI3qw3mgMbw2R0lDODKfV3syuHPhsKXxTG_Sgwefzmc69EWvQ0mh_sKJSRDaU5Yf8TqIBysj872sOxbAmk11QMC7ZjJwV6qVMqsbzTBHYON0wEHuWDTPJ1E0KCHzmFJp-xDckr9AQgwMFxY0YibxXhohicR3H8oOBaOAl-AHngPFJ1T70iINNS8wXB4kkS-A1ElEAfoQuQ",
-      price: "$1,200,000",
+      price: "NGN 1,200,000",
       title: "Skyline Penthouse",
       location: "New York, NY 10013",
       beds: 2,

@@ -14,7 +14,7 @@ import {
   Building2,
   Eye,
   MessageSquareMore,
-  BadgeDollarSign,
+  Wallet,
   CalendarDays,
   Plus,
   Mail,
@@ -49,10 +49,10 @@ const stats = [
   },
   {
     title: "Total Volume",
-    value: "$1.2M",
+    value: "NGN 1.2M",
     trend: "+5% trend",
     trendTone: "text-emerald-600",
-    icon: BadgeDollarSign,
+    icon: Wallet,
   },
 ];
 
@@ -71,21 +71,21 @@ const listings = [
     name: "Sunset Villa",
     location: "Beverly Hills, CA",
     status: "Active",
-    price: "$2,450,000",
+    price: "NGN 2,450,000",
     views: 842,
   },
   {
     name: "Palm Heights",
     location: "Miami, FL",
     status: "Active",
-    price: "$1,980,000",
+    price: "NGN 1,980,000",
     views: 601,
   },
   {
     name: "Urban Loft",
     location: "Chicago, IL",
     status: "Pending",
-    price: "$890,000",
+    price: "NGN 890,000",
     views: 344,
   },
 ];

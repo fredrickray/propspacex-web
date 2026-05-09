@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
+import { api } from "@/lib/api";
 import type { BuyerEscrowDeal } from "../types";
 import { formatMoney } from "../escrow-format";
-import { useEscrowSimulation } from "../escrow-context";
 
 type Step = "method" | "paystack";
 
@@ -28,21 +28,25 @@ export function FundEscrowDialog({
   deal,
   open,
   onOpenChange,
+  availableCents,
+  onSuccessfulFunding,
 }: {
   deal: BuyerEscrowDeal | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  availableCents: number;
+  onSuccessfulFunding?: () => void;
 }) {
   const { toast } = useToast();
-  const { state, fundWithWallet, fundWithCard } = useEscrowSimulation();
   const [step, setStep] = useState<Step>("method");
   const [method, setMethod] = useState<"card" | "wallet">("card");
   const [mockReference, setMockReference] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const canWallet = useMemo(() => {
     if (!deal) return false;
-    return state.buyerAvailableCents >= deal.amountCents;
-  }, [deal, state.buyerAvailableCents]);
+    return availableCents >= deal.amountCents;
+  }, [deal, availableCents]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -53,10 +57,37 @@ export function FundEscrowDialog({
     onOpenChange(next);
   };
 
-  const startCardFlow = () => {
+  const startCardFlow = async () => {
     if (!deal) return;
-    setMockReference(makeMockReference(deal.id));
-    setStep("paystack");
+    setSubmitting(true);
+    try {
+      const callback_url =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/buyer/payment/callback?flow=escrow`
+          : undefined;
+      const intent = await api.createEscrowPaymentIntent({
+        escrow_id: deal.id,
+        amount_minor: deal.amountCents,
+        currency_code: 1,
+        idempotency_key: `escrow_intent_${deal.id}_${Date.now()}`,
+        callback_url,
+      });
+      if (intent.payment_link && typeof window !== "undefined") {
+        window.location.href = intent.payment_link;
+        return;
+      }
+      setMockReference(intent.provider_reference || makeMockReference(deal.id));
+      setStep("paystack");
+    } catch (error) {
+      toast({
+        title: "Unable to initialize payment",
+        description:
+          error instanceof Error ? error.message : "Card payment intent initialization failed.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const confirmWallet = () => {
@@ -69,21 +100,21 @@ export function FundEscrowDialog({
       });
       return;
     }
-    fundWithWallet(deal.id);
     toast({
-      title: "Escrow funded",
-      description: `${formatMoney(deal.amountCents)} moved from your wallet into escrow.`,
+      title: "Not available yet",
+      description:
+        "Wallet funding for an existing escrow is not exposed by the current gateway contract yet. Use card for now.",
+      variant: "destructive",
     });
-    handleOpenChange(false);
   };
 
   const confirmCardSimulated = () => {
     if (!deal) return;
-    fundWithCard(deal.id);
     toast({
       title: "Payment confirmed",
-      description: "In production, Paystack webhooks and verify would confirm this before crediting escrow.",
+      description: "Payment callback verification will refresh escrow status from backend.",
     });
+    onSuccessfulFunding?.();
     handleOpenChange(false);
   };
 
@@ -106,7 +137,7 @@ export function FundEscrowDialog({
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               Available balance:{" "}
               <span className="font-semibold text-foreground tabular-nums">
-                {formatMoney(state.buyerAvailableCents)}
+                {formatMoney(availableCents)}
               </span>
             </div>
 
@@ -162,7 +193,7 @@ export function FundEscrowDialog({
                 Cancel
               </Button>
               {method === "card" ? (
-                <Button type="button" onClick={startCardFlow}>
+                <Button type="button" onClick={startCardFlow} disabled={submitting}>
                   Continue to Paystack
                 </Button>
               ) : (

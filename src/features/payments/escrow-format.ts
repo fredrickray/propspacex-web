@@ -7,9 +7,9 @@ import type {
 } from "./types";
 
 export function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-NG", {
     style: "currency",
-    currency: "USD",
+    currency: "NGN",
   }).format(cents / 100);
 }
 

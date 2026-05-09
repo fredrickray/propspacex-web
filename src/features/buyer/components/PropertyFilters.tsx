@@ -30,8 +30,8 @@ const PropertyFilters = () => {
       <div className="space-y-3">
         <Label>Price Range</Label>
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>$100k</span>
-          <span>$10M+</span>
+          <span>NGN 100k</span>
+          <span>NGN 10M+</span>
         </div>
         <Slider defaultValue={[200000, 5000000]} min={100000} max={10000000} step={50000} />
       </div>

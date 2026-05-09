@@ -150,8 +150,7 @@ const AddPropertyBasicInfoPage = () => {
                   <SelectValue placeholder="Currency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                  <SelectItem value="NGN">NGN (N)</SelectItem>
+                  <SelectItem value="NGN">NGN (Naira)</SelectItem>
                   <SelectItem value="USDT">USDT</SelectItem>
                   <SelectItem value="ETH">ETH</SelectItem>
                 </SelectContent>

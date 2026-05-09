@@ -8,7 +8,6 @@ import {
   Plug,
   Upload,
   Globe,
-  DollarSign,
   Clock,
   Wallet,
   AlertTriangle,
@@ -122,15 +121,15 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-border">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                  <DollarSign className="size-4" />
+                  <Wallet className="size-4" />
                   Default Currency
                 </Label>
-                <Select defaultValue="usd">
+                <Select defaultValue="ngn">
                   <SelectTrigger>
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="usd">United States Dollar</SelectItem>
+                    <SelectItem value="ngn">Nigerian Naira</SelectItem>
                     <SelectItem value="eur">Euro</SelectItem>
                     <SelectItem value="gbp">British Pound</SelectItem>
                     <SelectItem value="aed">UAE Dirham</SelectItem>
@@ -324,7 +323,7 @@ export function SettingsPage() {
                 {
                   name: "Stripe Payments",
                   status: "disconnected",
-                  icon: DollarSign,
+                  icon: Wallet,
                 },
                 { name: "Google Maps", status: "connected", icon: Globe },
               ].map((service) => (

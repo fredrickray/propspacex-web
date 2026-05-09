@@ -21,8 +21,8 @@ const savedSearches = [
 ];
 
 const recentlyViewed = [
-  { price: "$650,000", location: "Miami Beach, FL" },
-  { price: "$425,000", location: "Downtown Chicago, IL" },
+  { price: "NGN 650,000", location: "Miami Beach, FL" },
+  { price: "NGN 425,000", location: "Downtown Chicago, IL" },
 ];
 
 const DashboardPage = () => {

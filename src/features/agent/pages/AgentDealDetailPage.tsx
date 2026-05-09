@@ -43,8 +43,8 @@ export default function AgentDealDetailPage() {
       return;
     }
     agentQuoteEngagement(deal.id, {
-      amountDollars: a,
-      platformFeeDollars: f,
+      amountNaira: a,
+      platformFeeNaira: f,
       note: note.trim() || undefined,
     });
     toast({
@@ -88,7 +88,7 @@ export default function AgentDealDetailPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="q-amt">Total (USD)</Label>
+                <Label htmlFor="q-amt">Total (NGN)</Label>
                 <Input
                   id="q-amt"
                   inputMode="decimal"
@@ -97,7 +97,7 @@ export default function AgentDealDetailPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="q-fee">Platform fee (USD)</Label>
+                <Label htmlFor="q-fee">Platform fee (NGN)</Label>
                 <Input id="q-fee" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} />
               </div>
             </div>
