@@ -36,7 +36,7 @@ const ContactAgentPage = () => {
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent");
   const propertyId = typeof id === "string" ? id : "";
-  const { submitContactLead } = useCommunications();
+  const { submitContactLead, chatConnectionStatus, chatDebug } = useCommunications();
   const { toast } = useToast();
 
   const [detail, setDetail] = useState<NormalizedPropertyDetail | null>(null);
@@ -77,14 +77,15 @@ const ContactAgentPage = () => {
     void load();
   }, [load]);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detail) return;
     setSubmitting(true);
     try {
-      const { conversationId } = submitContactLead({
+      const { conversationId, isRemote } = await submitContactLead({
         propertyId,
         propertyTitle: detail.title,
+        agentId: detail.agentId,
         buyerName: name.trim(),
         buyerEmail: email.trim(),
         phone: phone.trim(),
@@ -92,10 +93,21 @@ const ContactAgentPage = () => {
         message: message.trim(),
       });
       toast({
-        title: "Inquiry sent",
-        description: "Your thread is in Messages. The agent can reply with a quote under Deals.",
+        title: isRemote ? "Inquiry sent" : "Inquiry saved locally",
+        description: isRemote
+          ? "Your thread is in Messages. The agent can reply with a quote under Deals."
+          : "Chat backend was unavailable for this thread, so the message is local only.",
       });
       router.push(`/buyer/messages?conv=${encodeURIComponent(conversationId)}`);
+    } catch (error) {
+      toast({
+        title: "Could not start chat",
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : "Please retry in a moment.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -253,6 +265,13 @@ const ContactAgentPage = () => {
                   <Button className="w-full" size="lg" type="submit" disabled={submitting}>
                     {submitting ? "Sending…" : "Send inquiry →"}
                   </Button>
+                  {process.env.NODE_ENV !== "production" ? (
+                    <p className="text-xs text-muted-foreground">
+                      WS: {chatConnectionStatus} | endpoint: {chatDebug.endpoint || "n/a"} | in:{" "}
+                      {chatDebug.lastInboundEvent || "-"} | out: {chatDebug.lastOutboundEvent || "-"}{" "}
+                      | err: {chatDebug.lastError || "-"}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-center text-muted-foreground">
                     By sending, you agree to PropSpace X terms and privacy policy.
                   </p>
