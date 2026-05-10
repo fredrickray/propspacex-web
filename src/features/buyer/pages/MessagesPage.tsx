@@ -15,7 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCommunications } from "@/features/communications/communications-context";
 import type { Conversation } from "@/features/communications/communications-types";
 
@@ -35,7 +40,14 @@ function formatShortTime(iso: string) {
 const MessagesPage = () => {
   const searchParams = useSearchParams();
   const convParam = searchParams.get("conv");
-  const { conversations, engagements, postMessage } = useCommunications();
+  const {
+    conversations,
+    engagements,
+    postMessage,
+    chatConnectionStatus,
+    chatDebug,
+    isRemoteConversation,
+  } = useCommunications();
 
   const sorted = useMemo(
     () =>
@@ -79,9 +91,14 @@ const MessagesPage = () => {
     setMessageText("");
   };
 
+  const isConnected = chatConnectionStatus === "connected";
+  const selectedIsRemote = selected ? isRemoteConversation(selected.id) : false;
+  const canSend = selected ? (!selectedIsRemote || isConnected) : false;
+
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] min-h-[420px]">
-      <div className="flex w-80 shrink-0 flex-col border-r border-border">
+    <TooltipProvider>
+      <div className="flex h-[calc(100dvh-3.5rem)] min-h-[420px] overflow-hidden">
+      <div className="flex h-full w-80 shrink-0 flex-col border-r border-border">
         <div className="border-b border-border p-4">
           <h1 className="mb-3 text-xl font-bold text-foreground">Inquiries</h1>
           <div className="relative">
@@ -90,7 +107,7 @@ const MessagesPage = () => {
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="p-2">
             {sorted.map((conv) => {
               const last = conv.messages[conv.messages.length - 1];
@@ -116,26 +133,47 @@ const MessagesPage = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <div className="mb-0.5 flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">{conv.agentName}</span>
+                      <div className="mb-0.5 flex min-w-0 items-center justify-between gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate text-sm font-medium text-foreground">
+                              {conv.agentName}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{conv.agentName}</TooltipContent>
+                        </Tooltip>
                         {last ? (
                           <span className="shrink-0 text-xs text-muted-foreground">
                             {formatShortTime(last.createdAtIso)}
                           </span>
                         ) : null}
                       </div>
-                      <p className="truncate text-xs font-medium text-primary">{conv.propertyTitle}</p>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">{last?.text ?? "—"}</p>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="max-w-full truncate text-xs font-medium text-primary">
+                            {conv.propertyTitle}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>{conv.propertyTitle}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
+                            {last?.text ?? "—"}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>{last?.text ?? "—"}</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                 </button>
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {selected ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
@@ -149,6 +187,12 @@ const MessagesPage = () => {
                     <span className="font-semibold text-foreground">{selected.agentName}</span>
                     <Badge variant="secondary" className="text-xs">
                       Agent
+                    </Badge>
+                    <Badge
+                      variant={selectedIsRemote && isConnected ? "secondary" : "outline"}
+                      className="text-xs"
+                    >
+                      {selectedIsRemote ? (isConnected ? "Live" : "Reconnecting") : "Local"}
                     </Badge>
                   </div>
                   <p className="truncate text-sm text-muted-foreground">
@@ -180,8 +224,15 @@ const MessagesPage = () => {
                 ) : null}
               </div>
             </div>
+            {process.env.NODE_ENV !== "production" ? (
+              <div className="border-b border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+                WS: {chatConnectionStatus} | endpoint: {chatDebug.endpoint || "n/a"} | in:{" "}
+                {chatDebug.lastInboundEvent || "-"} | out: {chatDebug.lastOutboundEvent || "-"}{" "}
+                | close: {chatDebug.lastCloseCode ?? "-"} | err: {chatDebug.lastError || "-"}
+              </div>
+            ) : null}
 
-            <ScrollArea className="flex-1 p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl space-y-4">
                 {selected.messages.map((msg) => (
                   <div
@@ -217,7 +268,7 @@ const MessagesPage = () => {
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="border-t border-border p-4">
               <div className="mx-auto flex max-w-3xl items-center gap-2">
@@ -229,6 +280,7 @@ const MessagesPage = () => {
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   className="flex-1"
+                  disabled={!canSend}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -236,7 +288,13 @@ const MessagesPage = () => {
                     }
                   }}
                 />
-                <Button size="icon" className="bg-primary hover:bg-primary/90" type="button" onClick={send}>
+                <Button
+                  size="icon"
+                  className="bg-primary hover:bg-primary/90"
+                  type="button"
+                  onClick={send}
+                  disabled={!canSend}
+                >
                   <Send className="size-4" />
                 </Button>
               </div>
@@ -248,7 +306,8 @@ const MessagesPage = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 

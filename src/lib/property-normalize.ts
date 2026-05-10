@@ -198,6 +198,7 @@ export type NormalizedPropertyDetail = NormalizedPropertyCard & {
   type: string;
   status: string;
   features: string[];
+  agentId: string | null;
   /** [lng, lat] when API provides GeoJSON Point */
   coordinates: [number, number] | null;
 };
@@ -216,6 +217,15 @@ export function normalizePropertyForDetail(
   if (Array.isArray(raw.features)) {
     features = raw.features.filter((f): f is string => typeof f === "string");
   }
+  const owner = isRecord(raw.owner) ? raw.owner : null;
+  const agentId =
+    pickString(
+      raw.ownerId,
+      (raw as Record<string, unknown>).owner_id,
+      raw.agentId,
+      owner?.id,
+      owner?._id,
+    ) || null;
 
   return {
     ...card,
@@ -223,6 +233,7 @@ export function normalizePropertyForDetail(
     type,
     status,
     features,
+    agentId,
     coordinates: getPropertyLngLat(raw),
   };
 }

@@ -187,6 +187,14 @@ class ApiClient {
     return this.getCookie(this.authCookieName);
   }
 
+  getAccessToken(): string | null {
+    return this.getToken();
+  }
+
+  getBaseUrl(): string {
+    return API_BASE_URL;
+  }
+
   private setCookie(name: string, value: string, maxAgeSeconds = 60 * 60 * 24) {
     if (typeof document === "undefined") return;
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
