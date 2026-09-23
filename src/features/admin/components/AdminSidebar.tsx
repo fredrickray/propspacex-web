@@ -2,12 +2,13 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Users,
   Building2,
   FileCheck,
-  Image,
+  Image as ImageIcon,
   Settings,
   LogOut,
   ChevronDown,
@@ -40,7 +41,7 @@ const mainNavItems = [
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Properties", url: "/admin/properties", icon: Building2 },
   { title: "Verifications", url: "/admin/verifications", icon: FileCheck },
-  { title: "Media", url: "/admin/media", icon: Image },
+  { title: "Media", url: "/admin/media", icon: ImageIcon },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
@@ -48,6 +49,26 @@ export function AdminSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
   const collapsed = state === "collapsed";
+  const profile = api.getProfile();
+  const displayName =
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim() ||
+    "Admin";
+  const roleLabel =
+    profile?.appRole === "admin"
+      ? "Super Admin"
+      : profile?.appRole === "agent"
+        ? "Agent"
+        : profile?.appRole === "buyer"
+          ? "Buyer"
+          : "User";
+  const initials =
+    displayName
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AD";
 
   const isActive = (path: string) => {
     if (path === "/admin") {
@@ -60,13 +81,16 @@ export function AdminSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
       <SidebarHeader className="border-b border-border px-4 py-3">
         <Link href="/admin" className="flex items-center gap-2">
-          <div className="size-8 text-primary">
-            <PropSpaceLogo className="w-full h-full" />
-          </div>
-          {!collapsed && (
-            <span className="text-lg font-bold tracking-tight">
-              PropSpace X
-            </span>
+          {collapsed ? (
+            <Image
+              src="/favicon.png"
+              alt="PropSpace X icon"
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0"
+            />
+          ) : (
+            <PropSpaceLogo className="h-10 w-auto max-w-[180px]" />
           )}
         </Link>
       </SidebarHeader>
@@ -103,13 +127,13 @@ export function AdminSidebar() {
             <button className="flex items-center gap-3 w-full hover:bg-accent rounded-lg p-2 transition-colors">
               <Avatar className="size-9">
                 <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=admin" />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">Admin User</p>
-                    <p className="text-xs text-muted-foreground">Super Admin</p>
+                    <p className="text-sm font-medium">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">{roleLabel}</p>
                   </div>
                   <ChevronDown className="size-4 text-muted-foreground" />
                 </>

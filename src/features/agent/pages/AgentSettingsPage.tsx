@@ -185,8 +185,7 @@ export default function AgentSettingsPage() {
       {/* Inner settings sidebar */}
       <aside className="w-full shrink-0 border-b border-border bg-card lg:w-[260px] lg:border-b-0 lg:border-r">
         <div className="flex items-center gap-2 border-b border-border px-4 py-4 lg:px-5">
-          <PropSpaceLogo className="size-8 text-primary" />
-          <span className="text-lg font-bold tracking-tight">PropSpace X</span>
+          <PropSpaceLogo className="h-11 w-auto" />
         </div>
         <div className="px-4 py-4 lg:px-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -20,7 +20,8 @@ export default function PaymentCallbackPage() {
   const [verified, setVerified] = useState<null | boolean>(null);
   const [message, setMessage] = useState<string>("");
   const success =
-    verified ?? status === "success" || status === "completed" || (!status && reference);
+    verified ??
+    (status === "success" || status === "completed" || (!status && !!reference));
 
   useEffect(() => {
     let cancelled = false;

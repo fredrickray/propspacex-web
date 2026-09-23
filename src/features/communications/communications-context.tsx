@@ -178,6 +178,7 @@ type CommunicationsContextValue = {
     intent: string | null;
     message: string;
   }) => Promise<{ conversationId: string; engagementId: string; isRemote: boolean }>;
+  agentStartDealForConversation: (conversationId: string) => string | null;
   agentQuoteEngagement: (
     engagementId: string,
     input: { amountNaira: number; platformFeeNaira: number; note?: string },
@@ -382,30 +383,41 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     isUnmountedRef.current = false;
-    const token = api.getAccessToken();
-    const wsUrl = token ? buildChatWsUrl(token) : null;
-    const safeEndpoint = wsUrl ? wsUrl.replace(/\?.*$/, "") : "";
-    setChatDebug((prev) => ({ ...prev, endpoint: safeEndpoint }));
-    if (!token || !wsUrl) {
-      setChatConnectionStatus("error");
+    let tokenWatchTimer: ReturnType<typeof setInterval> | null = null;
+    let resolvedWsUrl: string | null = null;
+
+    const tryStart = () => {
+      const token = api.getAccessToken();
+      const wsUrl = token ? buildChatWsUrl(token) : null;
+      if (!token || !wsUrl) {
+        setChatConnectionStatus("error");
+        setChatDebug((prev) => ({
+          ...prev,
+          endpoint: "",
+          lastError: !token
+            ? "No access token found for websocket auth"
+            : "Unable to build websocket URL",
+        }));
+        return false;
+      }
+
+      resolvedWsUrl = wsUrl;
       setChatDebug((prev) => ({
         ...prev,
-        lastError: !token
-          ? "No access token found for websocket auth"
-          : "Unable to build websocket URL",
+        endpoint: wsUrl.replace(/\?.*$/, ""),
+        lastError: null,
       }));
-      return () => {
-        isUnmountedRef.current = true;
-      };
-    }
+      connect();
+      return true;
+    };
 
     const connect = () => {
-      if (isUnmountedRef.current) return;
+      if (isUnmountedRef.current || !resolvedWsUrl) return;
       wsSessionReadyRef.current = false;
       setChatConnectionStatus(
         reconnectAttemptsRef.current > 0 ? "reconnecting" : "connecting",
       );
-      const socket = new WebSocket(wsUrl);
+      const socket = new WebSocket(resolvedWsUrl);
       socketRef.current = socket;
 
       socket.onopen = () => {
@@ -566,11 +578,22 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       };
     };
 
-    connect();
+    if (!tryStart()) {
+      tokenWatchTimer = setInterval(() => {
+        if (isUnmountedRef.current) return;
+        if (tryStart() && tokenWatchTimer) {
+          clearInterval(tokenWatchTimer);
+          tokenWatchTimer = null;
+        }
+      }, 1_000);
+    }
 
     return () => {
       isUnmountedRef.current = true;
       wsSessionReadyRef.current = false;
+      if (tokenWatchTimer) {
+        clearInterval(tokenWatchTimer);
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -635,7 +658,7 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
     [sendWsRequest],
   );
 
-  const waitForChatConnection = useCallback((timeoutMs = 6_000) => {
+  const waitForChatConnection = useCallback((timeoutMs = 12_000) => {
     if (
       chatConnectionStatusRef.current === "connected" &&
       wsSessionReadyRef.current
@@ -682,18 +705,14 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Property is missing a valid agentId for chat");
       }
 
-      if (chatConnectionStatusRef.current !== "connected") {
-        try {
-          await waitForChatConnection();
-        } catch {
-          setChatDebug((prev) => ({
-            ...prev,
-            lastError: "Chat socket is not connected",
-          }));
-          throw new Error(
-            "Chat is still connecting. Open Messages and wait for Live, then try again.",
-          );
-        }
+      try {
+        await waitForChatConnection();
+      } catch {
+        setChatDebug((prev) => ({
+          ...prev,
+          lastError: "Chat socket is still connecting",
+        }));
+        throw new Error("Chat is still connecting. Please wait a few seconds and try again.");
       }
 
       let remoteConversationId = "";
@@ -787,6 +806,49 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       };
     },
     [createOrGetRemoteConversation, sendWsRequest, waitForChatConnection],
+  );
+
+  const agentStartDealForConversation = useCallback(
+    (conversationId: string): string | null => {
+      if (!conversationId) return null;
+      const existingByLink = stateRef.current.engagements.find(
+        (e) => e.conversationId === conversationId,
+      );
+      if (existingByLink) return existingByLink.id;
+      const conv = stateRef.current.conversations.find((c) => c.id === conversationId);
+      if (!conv) return null;
+      if (conv.engagementId) {
+        const linked = stateRef.current.engagements.find((e) => e.id === conv.engagementId);
+        if (linked) return linked.id;
+      }
+      const engagementId = uid("eng");
+      const engagement: EngagementDeal = {
+        id: engagementId,
+        conversationId,
+        propertyId: conv.propertyId,
+        propertyTitle: conv.propertyTitle,
+        buyerName: conv.buyerName,
+        buyerEmail: "",
+        agentName: conv.agentName,
+        title: "Buyer inquiry",
+        description: "",
+        amountCents: 0,
+        platformFeeCents: 0,
+        status: "open",
+        escrowWalletId: null,
+        createdAtIso: nowIso(),
+        updatedAtIso: nowIso(),
+      };
+      setState((prev) => ({
+        ...prev,
+        engagements: [engagement, ...prev.engagements],
+        conversations: prev.conversations.map((c) =>
+          c.id === conversationId ? { ...c, engagementId } : c,
+        ),
+      }));
+      return engagementId;
+    },
+    [],
   );
 
   const agentQuoteEngagement = useCallback(
@@ -910,6 +972,7 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       isRemoteConversation,
       postMessage,
       submitContactLead,
+      agentStartDealForConversation,
       agentQuoteEngagement,
       buyerAcceptEngagement,
       addSavedSearch,
@@ -924,6 +987,7 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       isRemoteConversation,
       postMessage,
       submitContactLead,
+      agentStartDealForConversation,
       agentQuoteEngagement,
       buyerAcceptEngagement,
       addSavedSearch,

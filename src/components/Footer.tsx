@@ -34,12 +34,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-6">
-              <div className="size-6 text-primary">
-                <PropSpaceLogo />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-foreground">
-                PropSpace X
-              </span>
+              <PropSpaceLogo className="h-12 w-auto" />
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed mb-6 max-w-sm">
               The future of real estate is here. Buy, sell, and rent properties
