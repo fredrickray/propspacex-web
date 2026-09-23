@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -81,11 +82,16 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
             collapsed && "justify-center",
           )}
         >
-          <PropSpaceLogo className="h-8 w-8 shrink-0" />
-          {!collapsed && (
-            <span className="whitespace-nowrap text-xl font-bold text-foreground">
-              PropSpace X
-            </span>
+          {collapsed ? (
+            <Image
+              src="/favicon.png"
+              alt="PropSpace X icon"
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0"
+            />
+          ) : (
+            <PropSpaceLogo className="h-10 w-auto shrink-0" />
           )}
         </Link>
       </div>

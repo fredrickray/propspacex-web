@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Search, Send, Paperclip, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -31,12 +31,14 @@ function formatShortTime(iso: string) {
 }
 
 export default function AgentMessagesPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const convParam = searchParams.get("conv");
   const {
     conversations,
     engagements,
     postMessage,
+    agentStartDealForConversation,
     chatConnectionStatus,
     chatDebug,
     isRemoteConversation,
@@ -70,18 +72,27 @@ export default function AgentMessagesPage() {
     [sorted, selectedId],
   );
 
-  const engagement = useMemo(
-    () =>
-      selected?.engagementId
-        ? engagements.find((e) => e.id === selected.engagementId)
-        : undefined,
-    [engagements, selected],
-  );
+  const engagement = useMemo(() => {
+    if (!selected) return undefined;
+    if (selected.engagementId) {
+      const linked = engagements.find((e) => e.id === selected.engagementId);
+      if (linked) return linked;
+    }
+    return engagements.find((e) => e.conversationId === selected.id);
+  }, [engagements, selected]);
 
   const send = () => {
     if (!selected) return;
     postMessage(selected.id, "agent", messageText);
     setMessageText("");
+  };
+
+  const startDeal = () => {
+    if (!selected) return;
+    const existingId = engagement?.id ?? agentStartDealForConversation(selected.id);
+    if (existingId) {
+      router.push(`/agent/deals/${existingId}`);
+    }
   };
 
   const isConnected = chatConnectionStatus === "connected";
@@ -191,12 +202,24 @@ export default function AgentMessagesPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" asChild>
-                  <Link href={engagement ? `/agent/deals/${engagement.id}` : "/agent/deals"}>
+                {engagement ? (
+                  <Button variant="secondary" size="sm" asChild>
+                    <Link href={`/agent/deals/${engagement.id}`}>
+                      <FileText className="mr-1 size-4" />
+                      Deal & quote
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={startDeal}
+                  >
                     <FileText className="mr-1 size-4" />
-                    {engagement ? "Deal & quote" : "Deals"}
-                  </Link>
-                </Button>
+                    Start deal
+                  </Button>
+                )}
               </div>
             </div>
             {process.env.NODE_ENV !== "production" ? (

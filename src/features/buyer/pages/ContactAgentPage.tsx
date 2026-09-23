@@ -42,9 +42,10 @@ const ContactAgentPage = () => {
   const [detail, setDetail] = useState<NormalizedPropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [name, setName] = useState("Alex Morgan");
-  const [email, setEmail] = useState("alex@example.com");
-  const [phone, setPhone] = useState("+1 (555) 000-0000");
+  const [profileName, setProfileName] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState(
     intent === "tour"
       ? "I would like to schedule a tour of this property. Please share your availability.\n\nThank you."
@@ -58,6 +59,17 @@ const ContactAgentPage = () => {
         : "Hi, I'm interested in this listing. I'd appreciate more details and next steps.\n\nThank you.",
     );
   }, [intent]);
+
+  useEffect(() => {
+    const profile = api.getProfile();
+    if (!profile) return;
+    const fullName =
+      [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() || "";
+    setProfileName(fullName);
+    setName((prev) => prev || fullName);
+    setEmail((prev) => prev || profile.email || "");
+    setPhone((prev) => prev || profile.phone || "");
+  }, []);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -118,15 +130,22 @@ const ContactAgentPage = () => {
       <header className="border-b border-border bg-surface">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <PropSpaceLogo className="h-8 w-8" />
-            <span className="text-xl font-bold text-foreground">PropSpace X</span>
+            <PropSpaceLogo className="h-11 w-auto" />
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Buying as</span>
-            <span className="font-medium">{name || "Guest"}</span>
+            <span className="font-medium">{name || profileName || "Guest"}</span>
             <Avatar className="size-8">
               <AvatarImage src="/placeholder.svg" />
-              <AvatarFallback>{(name || "G").slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback>
+                {(name || profileName || "G")
+                  .split(" ")
+                  .map((part) => part[0])
+                  .filter(Boolean)
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </AvatarFallback>
             </Avatar>
           </div>
         </div>

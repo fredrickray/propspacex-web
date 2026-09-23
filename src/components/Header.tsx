@@ -29,12 +29,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 cursor-pointer">
-            <div className="size-8 text-primary">
-              <PropSpaceLogo />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              PropSpace X
-            </span>
+            <PropSpaceLogo className="h-11 w-auto" />
           </a>
 
           {/* Desktop Nav */}

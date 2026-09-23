@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@PropSpaceX",
   },
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

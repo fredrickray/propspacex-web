@@ -83,7 +83,7 @@ export function SettingsPage() {
                 <Label>Brand Logo</Label>
                 <div className="flex items-center gap-4">
                   <div className="size-20 bg-muted rounded-lg flex items-center justify-center text-primary">
-                    <PropSpaceLogo className="size-12" />
+                    <PropSpaceLogo className="size-14" />
                   </div>
                   <div className="space-y-2">
                     <Button variant="outline" size="sm" className="gap-2">

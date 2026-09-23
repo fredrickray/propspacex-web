@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   LogOut,
   Wallet,
   Handshake,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
@@ -28,7 +30,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const navItems = [
+const navItems: Array<{
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  disabled?: boolean;
+}> = [
   { label: "Dashboard", href: "/agent", icon: LayoutDashboard },
   { label: "My Listings", href: "/agent/listings", icon: House },
   { label: "Add Property", href: "/agent/add-property", icon: Plus },
@@ -47,6 +54,24 @@ type SidebarBodyProps = {
 
 function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
   const pathname = usePathname();
+  const profile = api.getProfile();
+  const agentName =
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim() ||
+    "Agent";
+  const agentRoleLabel =
+    profile?.appRole === "admin"
+      ? "Administrator"
+      : profile?.appRole === "buyer"
+        ? "Buyer"
+        : "Licensed Agent";
+  const agentInitials =
+    agentName
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AG";
 
   const linkClass = (active: boolean, extra?: string) =>
     cn(
@@ -81,11 +106,16 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
           onClick={onNavigate}
           className={cn("flex items-center gap-2", collapsed && "justify-center")}
         >
-          <PropSpaceLogo className="size-7 shrink-0 text-primary" />
-          {!collapsed && (
-            <span className="whitespace-nowrap text-lg font-bold text-foreground">
-              PropSpace X
-            </span>
+          {collapsed ? (
+            <Image
+              src="/favicon.png"
+              alt="PropSpace X icon"
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0"
+            />
+          ) : (
+            <PropSpaceLogo className="h-10 w-auto max-w-[170px] shrink-0" />
           )}
         </Link>
       </div>
@@ -156,16 +186,16 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
             >
               <Avatar className="size-9 shrink-0">
                 <AvatarImage src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" />
-                <AvatarFallback>SJ</AvatarFallback>
+                <AvatarFallback>{agentInitials}</AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      Sarah Johnson
+                      {agentName}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      Licensed Agent
+                      {agentRoleLabel}
                     </p>
                   </div>
                   <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground" />
