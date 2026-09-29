@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
+import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
 import { useDashboardSidebar } from "@/contexts/dashboard-sidebar-context";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -54,7 +55,7 @@ type SidebarBodyProps = {
 
 function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
   const pathname = usePathname();
-  const profile = api.getProfile();
+  const profile = useSignedInProfile();
   const agentName =
     [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim() ||
     "Agent";

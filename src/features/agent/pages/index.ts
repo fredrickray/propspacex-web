@@ -1,6 +1,7 @@
 export { AddPropertyForm } from "./AddPropertyForm";
 export { default as DashboardPage } from "./DashboardPage";
 export { default as MyListingsPage } from "./MyListingsPage";
+export { default as EditListingPage } from "./EditListingPage";
 export { default as AddPropertyBasicInfoPage } from "./AddPropertyBasicInfoPage";
 export { default as AddPropertyLocationPage } from "./AddPropertyLocationPage";
 export { default as AddPropertyDetailsPage } from "./AddPropertyDetailsPage";
