@@ -34,7 +34,7 @@ const CTASection = () => {
                 className="border-background/30 text-background hover:bg-background/10 font-bold"
                 asChild
               >
-                <Link href="/buyer/search">Learn More</Link>
+                <Link href="/properties">Learn More</Link>
               </Button>
             </div>
           </div>

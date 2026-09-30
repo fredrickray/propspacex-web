@@ -17,8 +17,8 @@ const Header = () => {
   };
 
   const navLinks = [
-    { label: "Buy", href: "/buyer/search" },
-    { label: "Rent", href: "/buyer/search" },
+    { label: "Buy", href: "/properties?intent=buy" },
+    { label: "Rent", href: "/properties?intent=rent" },
     { label: "Sell", href: "/auth/login" },
     { label: "Agents", href: "/auth/login" },
   ];

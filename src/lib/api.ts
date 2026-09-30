@@ -465,12 +465,17 @@ class ApiClient {
   }
 
   // Property api calls
-  async getProperties(): Promise<unknown[]> {
-    return this.request<unknown[]>("/properties");
+  async getProperties(options?: {
+    skipAuthRedirect?: boolean;
+  }): Promise<unknown[]> {
+    return this.request<unknown[]>("/properties", {}, options);
   }
 
-  async getPropertyById(id: string): Promise<unknown> {
-    return this.request<unknown>(`/properties/${id}`);
+  async getPropertyById(
+    id: string,
+    options?: { skipAuthRedirect?: boolean },
+  ): Promise<unknown> {
+    return this.request<unknown>(`/properties/${id}`, {}, options);
   }
 
   async createProperty(data: CreatePropertyRequest): Promise<unknown> {

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -68,7 +68,11 @@ function formatStatusLabel(value: string) {
 
 const PropertyDetailsPage = () => {
   const params = useParams();
+  const pathname = usePathname();
   const id = typeof params?.id === "string" ? params.id : params?.id?.[0] ?? "";
+  const publicCatalog = pathname.startsWith("/properties");
+  const searchHref = publicCatalog ? "/properties" : "/buyer/search";
+  const homeHref = publicCatalog ? "/" : "/buyer";
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -91,7 +95,10 @@ const PropertyDetailsPage = () => {
       setLoading(true);
       setError(null);
       try {
-        const raw = await api.getPropertyById(id);
+        const raw = await api.getPropertyById(
+          id,
+          publicCatalog ? { skipAuthRedirect: true } : undefined,
+        );
         const unwrapped = unwrapSingleProperty(raw);
         const normalized = normalizePropertyForDetail(unwrapped);
         if (cancelled) return;
@@ -119,12 +126,21 @@ const PropertyDetailsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, publicCatalog]);
 
   useEffect(() => {
     if (!id) return;
     setSaved(readIsFavorite(id));
   }, [id]);
+
+  const contactPath = (intent?: "tour") => {
+    const path = intent
+      ? `/buyer/contact/${id}?intent=${intent}`
+      : `/buyer/contact/${id}`;
+    if (!publicCatalog) return path;
+    if (api.getProfile()?.appRole === "buyer") return path;
+    return "/auth/login";
+  };
 
   const images = useMemo(() => {
     if (gallery.length > 0) return gallery;
@@ -236,7 +252,7 @@ const PropertyDetailsPage = () => {
           {error ?? "Property not found."}
         </div>
         <Button variant="outline" asChild>
-          <Link href="/buyer/search">Back to search</Link>
+          <Link href={searchHref}>Back to search</Link>
         </Button>
       </div>
     );
@@ -253,13 +269,13 @@ const PropertyDetailsPage = () => {
       >
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href="/buyer" className="hover:text-foreground">
+            <Link href={homeHref} className="hover:text-foreground">
               Home
             </Link>
           </li>
           <li aria-hidden>/</li>
           <li>
-            <Link href="/buyer/search" className="hover:text-foreground">
+            <Link href={searchHref} className="hover:text-foreground">
               Search
             </Link>
           </li>
@@ -451,13 +467,13 @@ const PropertyDetailsPage = () => {
             <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
                 <Button className="w-full" asChild>
-                  <Link href={`/buyer/contact/${id}`}>
+                  <Link href={contactPath()}>
                     <Phone className="mr-2 size-4" />
                     Contact about listing
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/buyer/contact/${id}?intent=tour`}>
+                  <Link href={contactPath("tour")}>
                     <Calendar className="mr-2 size-4" />
                     Schedule tour
                   </Link>

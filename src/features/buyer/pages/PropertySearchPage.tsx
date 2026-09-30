@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Grid,
@@ -22,17 +23,44 @@ import PropertyFilters from "../components/PropertyFilters";
 import PropertyGridCard from "../components/PropertyGridCard";
 import { api } from "@/lib/api";
 import {
-  normalizePropertyForCard,
+  normalizeCatalogListing,
   parsePropertyListEnvelope,
-  type NormalizedPropertyCard,
+  type CatalogListing,
 } from "@/lib/property-normalize";
+import {
+  isListingIntent,
+  listingMatchesIntent,
+  type ListingIntent,
+} from "@/lib/catalog-query";
 
-const PropertySearchPage = () => {
+const HEADINGS: Record<ListingIntent | "all", string> = {
+  all: "Properties",
+  buy: "Properties for sale",
+  rent: "Properties for rent",
+  sold: "Sold properties",
+};
+
+type PropertySearchPageProps = {
+  detailBasePath?: string;
+  publicCatalog?: boolean;
+};
+
+const PropertySearchPage = ({
+  detailBasePath = "/buyer/property",
+  publicCatalog = false,
+}: PropertySearchPageProps) => {
+  const searchParams = useSearchParams();
+  const intentParam = searchParams.get("intent");
+  const intent: ListingIntent | "" = isListingIntent(intentParam)
+    ? intentParam
+    : "";
+  const typeFilter = (searchParams.get("type") ?? "").trim().toLowerCase();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<NormalizedPropertyCard[]>([]);
-  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<CatalogListing[]>([]);
+  const urlQuery = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(urlQuery);
   const [sort, setSort] = useState<
     "relevance" | "price-asc" | "price-desc" | "newest"
   >("relevance");
@@ -41,11 +69,13 @@ const PropertySearchPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const raw = await api.getProperties();
+      const raw = await api.getProperties(
+        publicCatalog ? { skipAuthRedirect: true } : undefined,
+      );
       const rows = parsePropertyListEnvelope(raw);
-      const cards: NormalizedPropertyCard[] = [];
+      const cards: CatalogListing[] = [];
       for (const row of rows) {
-        const c = normalizePropertyForCard(row);
+        const c = normalizeCatalogListing(row);
         if (c) cards.push(c);
       }
       setItems(cards);
@@ -57,21 +87,26 @@ const PropertySearchPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [publicCatalog]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setQuery(urlQuery);
+  }, [urlQuery]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q),
-    );
-  }, [items, query]);
+    return items.filter((property) => {
+      if (typeFilter && property.propertyType !== typeFilter) return false;
+      if (!listingMatchesIntent(property.status, intent)) return false;
+      if (!q) return true;
+      const haystack = `${property.title} ${property.location} ${property.propertyType}`;
+      return haystack.toLowerCase().includes(q);
+    });
+  }, [items, query, typeFilter, intent]);
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
@@ -101,13 +136,20 @@ const PropertySearchPage = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                Properties for Sale
+                {HEADINGS[intent || "all"]}
               </h1>
               <p className="text-muted-foreground">
                 {loading
                   ? "Loading…"
                   : `${sorted.length} propert${sorted.length === 1 ? "y" : "ies"} found`}
               </p>
+              {intent === "rent" && !loading ? (
+                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                  Listings are marked available, pending, rented, or sold. None
+                  of those means a home is offered for rent, so this view stays
+                  empty until the catalog has a for-rent flag.
+                </p>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm">
@@ -196,7 +238,20 @@ const PropertySearchPage = () => {
               }
             >
               {sorted.map((property) => (
-                <PropertyGridCard key={property.id} {...property} />
+                <PropertyGridCard
+                  key={property.id}
+                  id={property.id}
+                  image={property.image}
+                  price={property.price}
+                  title={property.title}
+                  location={property.location}
+                  beds={property.beds}
+                  baths={property.baths}
+                  sqft={property.sqft}
+                  badge={property.badge}
+                  isPending={property.isPending}
+                  href={`${detailBasePath}/${property.id}`}
+                />
               ))}
             </div>
           )}

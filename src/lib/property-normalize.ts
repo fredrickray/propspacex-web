@@ -177,6 +177,23 @@ export function normalizePropertyForCard(raw: unknown): NormalizedPropertyCard |
   };
 }
 
+export type CatalogListing = NormalizedPropertyCard & {
+  propertyType: string;
+  status: string;
+  priceValue: number;
+};
+
+export function normalizeCatalogListing(raw: unknown): CatalogListing | null {
+  const card = normalizePropertyForCard(raw);
+  if (!card || !isRecord(raw)) return null;
+  return {
+    ...card,
+    propertyType: pickString(raw.type).toLowerCase(),
+    status: pickString(raw.status).toLowerCase(),
+    priceValue: pickNumber(raw.price),
+  };
+}
+
 /** GeoJSON Point coordinates [longitude, latitude], or null if missing. */
 export function getPropertyLngLat(raw: unknown): [number, number] | null {
   if (!isRecord(raw)) return null;

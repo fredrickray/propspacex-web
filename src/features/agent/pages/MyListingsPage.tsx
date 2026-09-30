@@ -332,7 +332,7 @@ const MyListingsPage = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem className="gap-2" asChild>
-                              <Link href={`/buyer/property/${pid}`}>
+                              <Link href={`/properties/${pid}`}>
                                 <Eye className="size-4" />
                                 View
                               </Link>
