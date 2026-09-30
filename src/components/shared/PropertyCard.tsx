@@ -22,6 +22,7 @@ interface PropertyCardProps {
   isPending?: boolean;
   variant?: "landing" | "grid";
   showActions?: boolean;
+  href?: string;
 }
 
 const PropertyCard = ({
@@ -39,6 +40,7 @@ const PropertyCard = ({
   isPending = false,
   variant = "landing",
   showActions = false,
+  href,
 }: PropertyCardProps) => {
   const [favorite, setFavorite] = useState(isFavorited);
 
@@ -135,7 +137,7 @@ const PropertyCard = ({
         {showActions && (
           <div className="flex gap-2 mt-3">
             <Button variant="outline" size="sm" className="flex-1" asChild>
-              <Link href={`/buyer/property/${id}`}>
+              <Link href={href ?? `/buyer/property/${id}`}>
                 <Eye className="size-4 mr-1" /> View Details
               </Link>
             </Button>

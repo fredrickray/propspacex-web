@@ -5,15 +5,29 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import {
+  PROPERTY_TYPE_OPTIONS,
+  buildCatalogSearchHref,
+  type ListingIntent,
+} from "@/lib/catalog-query";
 
 const HeroSection = () => {
-  const [activeTab, setActiveTab] = useState<"buy" | "rent" | "sold">("buy");
+  const [activeTab, setActiveTab] = useState<ListingIntent>("buy");
+  const [location, setLocation] = useState("");
+  const [propertyType, setPropertyType] = useState("");
   const router = useRouter();
 
-  const handleSearch = () => {
-    router.push("/buyer/search");
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault();
+    router.push(
+      buildCatalogSearchHref({
+        q: location,
+        type: propertyType,
+        intent: activeTab,
+      }),
+    );
   };
 
   return (
@@ -71,8 +85,7 @@ const HeroSection = () => {
             ))}
           </div>
 
-          {/* Inputs Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* Location Input */}
             <div className="md:col-span-5">
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
@@ -84,6 +97,8 @@ const HeroSection = () => {
                   className="w-full bg-transparent border-none focus-visible:ring-0 text-foreground placeholder:text-muted-foreground/70 text-base p-0 h-auto"
                   placeholder="City, Zip, Address"
                   type="text"
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
                 />
               </div>
             </div>
@@ -96,13 +111,15 @@ const HeroSection = () => {
               <div className="relative">
                 <select
                   aria-label="Property type"
+                  value={propertyType}
+                  onChange={(event) => setPropertyType(event.target.value)}
                   className="w-full bg-background rounded-lg border-none focus:ring-1 focus:ring-primary h-12 pl-3 pr-10 text-foreground text-base appearance-none cursor-pointer"
                 >
-                  <option>All Types</option>
-                  <option>House</option>
-                  <option>Condo</option>
-                  <option>Townhome</option>
-                  <option>Land</option>
+                  {PROPERTY_TYPE_OPTIONS.map((option) => (
+                    <option key={option.label} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none size-5" />
               </div>
@@ -137,15 +154,15 @@ const HeroSection = () => {
                 whileTap={{ scale: 0.99 }}
               >
                 <Button
+                  type="submit"
                   className="w-full h-12 text-base font-bold flex items-center justify-center gap-2"
-                  onClick={handleSearch}
                 >
                   <Search className="size-5" />
                   Search Properties
                 </Button>
               </motion.div>
             </div>
-          </div>
+          </form>
         </motion.div>
       </div>
     </section>

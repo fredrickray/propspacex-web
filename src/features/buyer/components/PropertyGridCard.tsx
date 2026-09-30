@@ -13,6 +13,7 @@ interface PropertyGridCardProps {
   isFavorited?: boolean;
   isNew?: boolean;
   isPending?: boolean;
+  href?: string;
 }
 
 const PropertyGridCard = (props: PropertyGridCardProps) => {

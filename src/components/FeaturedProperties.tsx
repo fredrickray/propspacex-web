@@ -51,7 +51,7 @@ const FeaturedProperties = () => {
           </p>
         </div>
         <Link
-          href="/buyer/search"
+          href="/properties"
           className="text-primary font-bold text-sm hover:underline flex items-center gap-1"
         >
           View All <ArrowRight className="size-4" />

@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 const Footer = () => {
   const footerLinks = {
     Platform: [
-      { label: "Browse Properties", href: "/buyer/search" },
+      { label: "Browse Properties", href: "/properties" },
       { label: "Agents", href: "/auth/login" },
       { label: "Dashboard", href: "/buyer" },
       { label: "Admin", href: "/admin" },
