@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import {
+  PRICE_MAX,
+  PRICE_MIN,
+  PRICE_STEP,
   PROPERTY_TYPE_OPTIONS,
   buildCatalogSearchHref,
+  formatCompactNaira,
   type ListingIntent,
 } from "@/lib/catalog-query";
 
@@ -17,6 +22,7 @@ const HeroSection = () => {
   const [activeTab, setActiveTab] = useState<ListingIntent>("buy");
   const [location, setLocation] = useState("");
   const [propertyType, setPropertyType] = useState("");
+  const [price, setPrice] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const router = useRouter();
 
   const handleSearch = (event: FormEvent) => {
@@ -26,6 +32,8 @@ const HeroSection = () => {
         q: location,
         type: propertyType,
         intent: activeTab,
+        minPrice: price[0] > PRICE_MIN ? price[0] : null,
+        maxPrice: price[1] < PRICE_MAX ? price[1] : null,
       }),
     );
   };
@@ -131,18 +139,23 @@ const HeroSection = () => {
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">
                   Price Range
                 </label>
-                <div className="flex items-center gap-2 bg-background rounded-lg px-3 h-12">
-                  <span className="text-sm font-medium text-foreground">
-                    NGN 100k
-                  </span>
-                  <div className="flex-1 h-1 bg-muted rounded-full relative mx-2">
-                    <div className="absolute left-[20%] right-[30%] top-0 bottom-0 bg-primary rounded-full" />
-                    <div className="absolute left-[20%] top-1/2 -translate-y-1/2 size-3 bg-primary rounded-full shadow cursor-pointer" />
-                    <div className="absolute right-[30%] top-1/2 -translate-y-1/2 size-3 bg-primary rounded-full shadow cursor-pointer" />
+                <div className="rounded-lg bg-background px-3 py-3">
+                  <div className="mb-3 flex items-center justify-between text-sm font-medium text-foreground">
+                    <span>{formatCompactNaira(price[0])}</span>
+                    <span>{formatCompactNaira(price[1])}</span>
                   </div>
-                  <span className="text-sm font-medium text-foreground">
-                    NGN 5M
-                  </span>
+                  <Slider
+                    min={PRICE_MIN}
+                    max={PRICE_MAX}
+                    step={PRICE_STEP}
+                    value={price}
+                    onValueChange={(next) => {
+                      const min = next[0] ?? PRICE_MIN;
+                      const max = next[1] ?? PRICE_MAX;
+                      setPrice([min, max]);
+                    }}
+                    aria-label="Price range"
+                  />
                 </div>
               </div>
             </div>

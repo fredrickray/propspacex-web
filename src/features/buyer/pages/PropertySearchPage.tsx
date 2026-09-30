@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 import {
   Search,
   Grid,
@@ -28,8 +29,11 @@ import {
   type CatalogListing,
 } from "@/lib/property-normalize";
 import {
-  isListingIntent,
-  listingMatchesIntent,
+  catalogFiltersToQuery,
+  emptyCatalogFilters,
+  listingMatchesFilters,
+  parseCatalogFilters,
+  type CatalogFilters,
   type ListingIntent,
 } from "@/lib/catalog-query";
 
@@ -49,21 +53,23 @@ const PropertySearchPage = ({
   detailBasePath = "/buyer/property",
   publicCatalog = false,
 }: PropertySearchPageProps) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const intentParam = searchParams.get("intent");
-  const intent: ListingIntent | "" = isListingIntent(intentParam)
-    ? intentParam
-    : "";
-  const typeFilter = (searchParams.get("type") ?? "").trim().toLowerCase();
+  const serializedFilters = searchParams.toString();
+  const skipUrlSync = useRef(false);
+  const [filters, setFilters] = useState<CatalogFilters>(() =>
+    parseCatalogFilters(searchParams),
+  );
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<CatalogListing[]>([]);
-  const urlQuery = searchParams.get("q") ?? "";
-  const [query, setQuery] = useState(urlQuery);
   const [sort, setSort] = useState<
     "relevance" | "price-asc" | "price-desc" | "newest"
   >("relevance");
+  const intent: ListingIntent | "" = filters.intent;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,28 +100,34 @@ const PropertySearchPage = ({
   }, [load]);
 
   useEffect(() => {
-    setQuery(urlQuery);
-  }, [urlQuery]);
+    if (skipUrlSync.current) {
+      skipUrlSync.current = false;
+      return;
+    }
+    setFilters(parseCatalogFilters(new URLSearchParams(serializedFilters)));
+  }, [serializedFilters]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter((property) => {
-      if (typeFilter && property.propertyType !== typeFilter) return false;
-      if (!listingMatchesIntent(property.status, intent)) return false;
-      if (!q) return true;
-      const haystack = `${property.title} ${property.location} ${property.propertyType}`;
-      return haystack.toLowerCase().includes(q);
-    });
-  }, [items, query, typeFilter, intent]);
+  const replaceFilters = (next: CatalogFilters) => {
+    setFilters(next);
+    const query = catalogFiltersToQuery(next);
+    if (query === serializedFilters) return;
+    skipUrlSync.current = true;
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const filtered = useMemo(
+    () => items.filter((property) => listingMatchesFilters(property, filters)),
+    [items, filters],
+  );
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
-    if (sort === "price-asc" || sort === "price-desc") {
-      copy.sort((a, b) => {
-        const na = Number(String(a.price).replace(/[^\d.-]/g, "")) || 0;
-        const nb = Number(String(b.price).replace(/[^\d.-]/g, "")) || 0;
-        return sort === "price-asc" ? na - nb : nb - na;
-      });
+    if (sort === "price-asc") {
+      copy.sort((a, b) => a.priceValue - b.priceValue);
+    } else if (sort === "price-desc") {
+      copy.sort((a, b) => b.priceValue - a.priceValue);
+    } else if (sort === "newest") {
+      copy.sort((a, b) => b.createdAtMs - a.createdAtMs);
     }
     return copy;
   }, [filtered, sort]);
@@ -127,9 +139,21 @@ const PropertySearchPage = ({
         <span className="text-foreground">Browse listings</span>
       </div>
 
-      <div className="flex gap-6">
-        <div className="w-72 flex-shrink-0 hidden lg:block">
-          <PropertyFilters />
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div
+          className={cn(
+            "w-full shrink-0 lg:w-72",
+            filtersOpen ? "block" : "hidden lg:block",
+          )}
+        >
+          <PropertyFilters
+            value={filters}
+            onChange={replaceFilters}
+            onReset={() =>
+              replaceFilters(emptyCatalogFilters(filters.intent))
+            }
+            onShowResults={() => setFiltersOpen(false)}
+          />
         </div>
 
         <div className="flex-1">
@@ -198,11 +222,19 @@ const PropertySearchPage = ({
               <Input
                 placeholder="Search by title or location…"
                 className="pl-9"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={filters.q}
+                onChange={(event) =>
+                  replaceFilters({ ...filters, q: event.target.value })
+                }
               />
             </div>
-            <Button variant="outline" className="lg:hidden w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              className="lg:hidden w-full sm:w-auto"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
               <SlidersHorizontal className="size-4 mr-2" /> Filters
             </Button>
           </div>

@@ -177,20 +177,57 @@ export function normalizePropertyForCard(raw: unknown): NormalizedPropertyCard |
   };
 }
 
+function collectAmenityText(raw: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value === "string" && value.trim()) parts.push(value.trim());
+  };
+
+  if (Array.isArray(raw.features)) raw.features.forEach(push);
+
+  if (Array.isArray(raw.amenities)) {
+    for (const group of raw.amenities) {
+      if (!isRecord(group)) continue;
+      for (const key of ["comfort", "safety", "recreation"]) {
+        const list = group[key];
+        if (Array.isArray(list)) list.forEach(push);
+      }
+    }
+  }
+
+  const size = isRecord(raw.size) ? raw.size : {};
+  if (pickNumber(size.parkingSpaces) > 0) parts.push("parking garage");
+  return parts.join(" ").toLowerCase();
+}
+
+function readAreaValue(raw: Record<string, unknown>): number {
+  const size = isRecord(raw.size) ? raw.size : {};
+  const dim = isRecord(size.dimensionDetails) ? size.dimensionDetails : {};
+  return pickNumber(dim.totalArea, raw.totalArea);
+}
+
 export type CatalogListing = NormalizedPropertyCard & {
   propertyType: string;
   status: string;
   priceValue: number;
+  areaValue: number;
+  amenityText: string;
+  createdAtMs: number;
 };
 
 export function normalizeCatalogListing(raw: unknown): CatalogListing | null {
   const card = normalizePropertyForCard(raw);
   if (!card || !isRecord(raw)) return null;
+  const createdAt = pickString(raw.createdAt, raw.created_at);
+  const createdAtMs = Date.parse(createdAt);
   return {
     ...card,
     propertyType: pickString(raw.type).toLowerCase(),
     status: pickString(raw.status).toLowerCase(),
     priceValue: pickNumber(raw.price),
+    areaValue: readAreaValue(raw),
+    amenityText: collectAmenityText(raw),
+    createdAtMs: Number.isFinite(createdAtMs) ? createdAtMs : 0,
   };
 }
 
