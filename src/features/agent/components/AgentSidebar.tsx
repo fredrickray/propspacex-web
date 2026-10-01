@@ -9,7 +9,6 @@ import {
   House,
   Plus,
   Users,
-  MessageSquare,
   BarChart3,
   Settings,
   ChevronDown,
@@ -43,7 +42,6 @@ const navItems: Array<{
   { label: "Leads", href: "/agent/leads", icon: Users },
   { label: "Deals", href: "/agent/deals", icon: Handshake },
   { label: "Wallet", href: "/agent/wallet", icon: Wallet },
-  { label: "Messages", href: "/agent/messages", icon: MessageSquare },
   { label: "Analytics", href: "/agent/analytics", icon: BarChart3 },
   { label: "Settings", href: "/agent/settings", icon: Settings },
 ];

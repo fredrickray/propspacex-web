@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useMessagingDock } from "@/features/communications/messaging-dock";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownLeft,
@@ -47,6 +47,7 @@ const terminalStatuses: EscrowDealStatus[] = ["released", "refunded"];
 
 export default function BuyerWalletPage() {
   const searchParams = useSearchParams();
+  const { openList } = useMessagingDock();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [walletAvailableCents, setWalletAvailableCents] = useState(0);
@@ -267,9 +268,9 @@ export default function BuyerWalletPage() {
           <AlertDescription>
             You are viewing <strong>{focusedDeal.title}</strong>. Scroll to its card below to
             continue.{" "}
-            <Link href="/buyer/messages" className="underline underline-offset-2">
-              Back to messages
-            </Link>
+            <button type="button" className="underline underline-offset-2" onClick={openList}>
+              Open messages
+            </button>
             .
           </AlertDescription>
         </Alert>
