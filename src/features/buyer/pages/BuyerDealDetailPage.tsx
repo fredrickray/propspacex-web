@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCommunications } from "@/features/communications/communications-context";
+import { useMessagingDock } from "@/features/communications/messaging-dock";
 import { formatMoney } from "@/features/payments/escrow-format";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -24,6 +25,7 @@ export default function BuyerDealDetailPage() {
   const { toast } = useToast();
   const dealId = typeof params.dealId === "string" ? params.dealId : "";
   const { engagements, buyerAcceptEngagement } = useCommunications();
+  const { openThread } = useMessagingDock();
   const deal = useMemo(() => engagements.find((e) => e.id === dealId), [engagements, dealId]);
   const [busy, setBusy] = useState(false);
 
@@ -143,9 +145,13 @@ export default function BuyerDealDetailPage() {
       {deal.status === "open" && (
         <p className="text-sm text-muted-foreground">
           Waiting for the agent to send a quote. You can continue the conversation in{" "}
-          <Link href="/buyer/messages" className="text-primary underline">
-            Messages
-          </Link>
+          <button
+            type="button"
+            className="text-primary underline"
+            onClick={() => openThread(deal.conversationId)}
+          >
+            Messaging
+          </button>
           .
         </p>
       )}

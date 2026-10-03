@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import MessagesPage from "@/features/buyer/pages/MessagesPage";
 
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <MessagesPage />;
+  return (
+    <Suspense fallback={null}>
+      <MessagesPage />
+    </Suspense>
+  );
 }

@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mail, Phone, Search, CalendarDays, MessageSquare, FileText } from "lucide-react";
 import { useCommunications } from "@/features/communications/communications-context";
+import { useMessagingDock } from "@/features/communications/messaging-dock";
 import type { EngagementDealStatus } from "@/features/communications/communications-types";
 
 function formatLeadDate(iso: string) {
@@ -48,6 +49,7 @@ function stageBadge(status: EngagementDealStatus) {
 
 const LeadsPage = () => {
   const { leads, engagements } = useCommunications();
+  const { openThread } = useMessagingDock();
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<"all" | EngagementDealStatus>("all");
 
@@ -162,11 +164,15 @@ const LeadsPage = () => {
                       </a>
                     </Button>
                   ) : null}
-                  <Button variant="outline" size="sm" className="gap-2" asChild>
-                    <Link href={`/agent/messages?conv=${encodeURIComponent(lead.conversationId)}`}>
-                      <MessageSquare className="size-4" />
-                      Message
-                    </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    type="button"
+                    onClick={() => openThread(lead.conversationId)}
+                  >
+                    <MessageSquare className="size-4" />
+                    Message
                   </Button>
                   <Button size="sm" className="gap-2" asChild>
                     <Link href={`/agent/deals/${lead.engagementId}`}>

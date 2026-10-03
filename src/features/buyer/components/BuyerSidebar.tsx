@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Search,
   Heart,
-  MessageSquare,
   Settings,
   LogOut,
   Handshake,
@@ -30,7 +29,6 @@ const navItems = [
   { icon: Search, label: "Property Search", path: "/buyer/search" },
   { icon: Search, label: "Saved Searches", path: "/buyer/searches" },
   { icon: Heart, label: "Favorites", path: "/buyer/favorites" },
-  { icon: MessageSquare, label: "Messages", path: "/buyer/messages", badge: 3 },
   { icon: Handshake, label: "Deals", path: "/buyer/deals" },
   { icon: Wallet, label: "Wallet", path: "/buyer/wallet" },
 ];
@@ -107,21 +105,8 @@ function SidebarBody({ collapsed, onNavigate }: SidebarBodyProps) {
             >
               <item.icon className="size-5 shrink-0" />
               {!collapsed && (
-                <>
-                  <span className="font-medium whitespace-nowrap">{item.label}</span>
-                  {item.badge ? (
-                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </>
+                <span className="font-medium whitespace-nowrap">{item.label}</span>
               )}
-              {collapsed && item.badge ? (
-                <span
-                  className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary"
-                  aria-label={`${item.badge} notifications`}
-                />
-              ) : null}
             </Link>
           );
           return (

@@ -9,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,15 +28,16 @@ import {
   type NormalizedPropertyDetail,
 } from "@/lib/property-normalize";
 import { useCommunications } from "@/features/communications/communications-context";
+import { useMessagingDock } from "@/features/communications/messaging-dock";
 import { useToast } from "@/components/ui/use-toast";
 
 const ContactAgentPage = () => {
   const { id } = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent");
   const propertyId = typeof id === "string" ? id : "";
   const { submitContactLead, chatConnectionStatus, chatDebug } = useCommunications();
+  const { openThread } = useMessagingDock();
   const { toast } = useToast();
 
   const [detail, setDetail] = useState<NormalizedPropertyDetail | null>(null);
@@ -107,10 +108,10 @@ const ContactAgentPage = () => {
       toast({
         title: isRemote ? "Inquiry sent" : "Inquiry saved locally",
         description: isRemote
-          ? "Your thread is in Messages. The agent can reply with a quote under Deals."
+          ? "The thread is open in Messaging. The agent can reply with a quote under Deals."
           : "Chat backend was unavailable for this thread, so the message is local only.",
       });
-      router.push(`/buyer/messages?conv=${encodeURIComponent(conversationId)}`);
+      openThread(conversationId);
     } catch (error) {
       toast({
         title: "Could not start chat",
