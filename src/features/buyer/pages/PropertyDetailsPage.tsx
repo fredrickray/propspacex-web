@@ -36,6 +36,7 @@ import {
   type NormalizedPropertyDetail,
 } from "@/lib/property-normalize";
 import { useToast } from "@/hooks/use-toast";
+import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
 import {
   isFavorite as readIsFavorite,
   removeFavorite,
@@ -71,6 +72,7 @@ const PropertyDetailsPage = () => {
   const pathname = usePathname();
   const id = typeof params?.id === "string" ? params.id : params?.id?.[0] ?? "";
   const publicCatalog = pathname.startsWith("/properties");
+  const profile = useSignedInProfile();
   const searchHref = publicCatalog ? "/properties" : "/buyer/search";
   const homeHref = publicCatalog ? "/" : "/buyer";
   const { toast } = useToast();
@@ -138,7 +140,7 @@ const PropertyDetailsPage = () => {
       ? `/buyer/contact/${id}?intent=${intent}`
       : `/buyer/contact/${id}`;
     if (!publicCatalog) return path;
-    if (api.getProfile()?.appRole === "buyer") return path;
+    if (profile?.appRole === "buyer") return path;
     return "/auth/login";
   };
 

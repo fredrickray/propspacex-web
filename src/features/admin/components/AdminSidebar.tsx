@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api } from "@/lib/api";
+import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
 import {
   Sidebar,
   SidebarContent,
@@ -49,7 +50,7 @@ export function AdminSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
   const collapsed = state === "collapsed";
-  const profile = api.getProfile();
+  const profile = useSignedInProfile();
   const displayName =
     [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim() ||
     "Admin";

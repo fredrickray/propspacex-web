@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
   Building2,
@@ -34,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api } from "@/lib/api";
+import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeAppearanceSettings } from "@/components/settings/theme-appearance-settings";
 
@@ -84,7 +85,7 @@ export default function AgentSettingsPage() {
     {},
   );
 
-  const profile = useMemo(() => api.getProfile(), []);
+  const profile = useSignedInProfile();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");

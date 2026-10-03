@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Eye,
   Loader2,
@@ -64,6 +65,7 @@ function pickListedDate(raw: unknown): string {
 }
 
 const MyListingsPage = () => {
+  const router = useRouter();
   const { toast } = useToast();
   const [notice, setNotice] = useState<"published" | "preview" | null>(null);
   const [loading, setLoading] = useState(true);
@@ -276,24 +278,46 @@ const MyListingsPage = () => {
               <tbody>
                 {filtered.map((listing) => {
                   const pid = getPropertyId(listing.raw);
+                  const previewHref = pid ? `/properties/${pid}` : "";
+                  const openPreview = () => {
+                    if (previewHref) router.push(previewHref);
+                  };
                   return (
                     <tr
                       key={pid || listing.title}
-                      className="border-b border-border last:border-0"
+                      tabIndex={previewHref ? 0 : undefined}
+                      role={previewHref ? "link" : undefined}
+                      aria-label={
+                        previewHref ? `Preview ${listing.title}` : undefined
+                      }
+                      onClick={openPreview}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openPreview();
+                        }
+                      }}
+                      className="group cursor-pointer border-b border-border transition-colors duration-150 ease-out last:border-0 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                     >
-                      <td className="px-4 py-4">
+                      <td className="relative px-4 py-4">
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
+                        />
                         <div className="flex items-center gap-3">
-                          <img
-                            src={listing.image}
-                            alt={listing.title}
-                            className="h-12 w-16 rounded-lg object-cover"
-                          />
-                          <p className="font-semibold text-foreground whitespace-nowrap max-w-[200px] truncate">
+                          <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg">
+                            <img
+                              src={listing.image}
+                              alt=""
+                              className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+                            />
+                          </div>
+                          <p className="max-w-[200px] truncate font-semibold text-foreground transition-colors duration-150 ease-out group-hover:text-primary">
                             {listing.title}
                           </p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground font-medium capitalize">
+                      <td className="px-4 py-4 font-medium capitalize text-muted-foreground">
                         {typeof listing.raw === "object" &&
                         listing.raw !== null &&
                         "type" in listing.raw
@@ -303,7 +327,7 @@ const MyListingsPage = () => {
                             )
                           : "—"}
                       </td>
-                      <td className="px-4 py-4 font-semibold text-foreground whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-4 font-semibold text-foreground">
                         {listing.price}
                       </td>
                       <td className="px-4 py-4">
@@ -316,31 +340,40 @@ const MyListingsPage = () => {
                       </td>
                       <td className="px-4 py-4 text-muted-foreground">—</td>
                       <td className="px-4 py-4 text-muted-foreground">—</td>
-                      <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">
                         {pickListedDate(listing.raw)}
                       </td>
-                      <td className="px-4 py-4">
+                      <td
+                        className="px-4 py-4"
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
+                              aria-label={`Actions for ${listing.title}`}
                             >
                               <MoreHorizontal className="size-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
                             <DropdownMenuItem className="gap-2" asChild>
-                              <Link href={`/properties/${pid}`}>
+                              <Link href={previewHref || "/properties"}>
                                 <Eye className="size-4" />
                                 View
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" disabled>
-                              <Pencil className="size-4" />
-                              Edit
-                            </DropdownMenuItem>
+                            {pid ? (
+                              <DropdownMenuItem className="gap-2" asChild>
+                                <Link href={`/agent/listings/${pid}/edit`}>
+                                  <Pencil className="size-4" />
+                                  Edit
+                                </Link>
+                              </DropdownMenuItem>
+                            ) : null}
                             <DropdownMenuItem
                               className="gap-2 text-destructive focus:text-destructive"
                               onClick={() => void handleDelete(listing)}
