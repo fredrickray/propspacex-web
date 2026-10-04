@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   Filter,
@@ -19,8 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api, PropertyStatus } from "@/lib/api";
 import {
   getPropertyId,
   normalizePropertyForDetail,
@@ -28,60 +27,53 @@ import {
 } from "@/lib/property-normalize";
 
 export function PropertyModerationPage() {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState<unknown[]>([]);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const requestRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError(null);
     try {
-      const raw = await api.getProperties();
-      const list = parsePropertyListEnvelope(raw);
-      setAll(list);
+      if (activeTab === "flagged") {
+        if (requestId === requestRef.current) setAll([]);
+        return;
+      }
+      const status =
+        activeTab === "pending" ? PropertyStatus.PENDING : PropertyStatus.AVAILABLE;
+      const raw = await api.getProperties({ status, page: 1, limit: 50 });
+      if (requestId !== requestRef.current) return;
+      setAll(parsePropertyListEnvelope(raw));
     } catch (e) {
+      if (requestId !== requestRef.current) return;
       setError(
         e instanceof Error ? e.message : "Failed to load properties.",
       );
       setAll([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const tabFiltered = useMemo(() => {
-    return all.filter((r) => {
-      if (typeof r !== "object" || r === null) return false;
-      const o = r as Record<string, unknown>;
-      const status = String(o.status ?? "").toLowerCase();
-      const flagged = Boolean(o.flagged ?? o.isFlagged);
-
-      if (activeTab === "pending") return status === "pending";
-      if (activeTab === "approved")
-        return status === "available" || o.isActive === true;
-      if (activeTab === "flagged") return flagged;
-      return true;
-    });
-  }, [all, activeTab]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return tabFiltered;
-    return tabFiltered.filter((r) => {
+    if (!q) return all;
+    return all.filter((r) => {
       const o = r as Record<string, unknown>;
       const title = String(o.title ?? "").toLowerCase();
       const id = getPropertyId(r).toLowerCase();
       return title.includes(q) || id.includes(q);
     });
-  }, [tabFiltered, query]);
+  }, [all, query]);
 
   useEffect(() => {
     if (!filtered.length) {
@@ -188,7 +180,11 @@ export function PropertyModerationPage() {
             </div>
           ) : queueForList.length === 0 ? (
             <div className="text-sm text-muted-foreground border border-border rounded-lg p-6 text-center">
-              No listings in this queue.
+              {activeTab === "flagged"
+                ? "Flagged listings will show here once the API returns a flagged field."
+                : activeTab === "pending"
+                  ? "No listings are waiting for review."
+                  : "No live listings in this queue."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -343,44 +339,21 @@ export function PropertyModerationPage() {
                   {selectedDetail.description}
                 </p>
 
-                <div className="flex items-center justify-between pt-4">
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() =>
-                      toast({
-                        title: "Not available",
-                        description:
-                          "Escalation is not connected to the API yet.",
-                      })
-                    }
-                  >
-                    Escalate
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      type="button"
-                      onClick={() =>
-                        toast({
-                          title: "Not available",
-                          description:
-                            "Reject action is not connected to the API yet.",
-                        })
-                      }
-                    >
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="max-w-md text-sm text-muted-foreground">
+                    Approve, reject, and escalate need admin routes on the API.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" type="button" disabled>
+                      Escalate
+                    </Button>
+                    <Button variant="destructive" type="button" disabled>
                       Reject
                     </Button>
                     <Button
                       type="button"
                       className="bg-green-600 hover:bg-green-700"
-                      onClick={() =>
-                        toast({
-                          title: "Not available",
-                          description:
-                            "Approve action is not connected to the API yet.",
-                        })
-                      }
+                      disabled
                     >
                       Approve Listing
                     </Button>

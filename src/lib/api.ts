@@ -467,8 +467,20 @@ class ApiClient {
   // Property api calls
   async getProperties(options?: {
     skipAuthRedirect?: boolean;
+    status?: PropertyStatus;
+    page?: number;
+    limit?: number;
   }): Promise<unknown[]> {
-    return this.request<unknown[]>("/properties", {}, options);
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.page) params.set("page", String(options.page));
+    if (options?.limit) params.set("limit", String(options.limit));
+    const query = params.toString();
+    return this.request<unknown[]>(
+      `/properties${query ? `?${query}` : ""}`,
+      {},
+      { skipAuthRedirect: options?.skipAuthRedirect },
+    );
   }
 
   async getPropertyById(
