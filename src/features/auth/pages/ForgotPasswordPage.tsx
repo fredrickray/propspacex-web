@@ -2,29 +2,42 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, Shield, AlertCircle } from "lucide-react";
+import { Mail, ArrowLeft, AlertCircle } from "lucide-react";
 import {
   AuthLayout,
   AuthCard,
   AuthCardHeader,
   AuthInput,
   AuthButton,
-  AuthFooter,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { api } from "@/lib/api";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await api.requestPasswordReset(email.trim());
+      setSuccessMessage(
+        response.message ||
+          "If that email address is in our database, we will send you an email to reset your password.",
+      );
       setIsSubmitted(true);
-    }, 1500);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not send the reset email.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,6 +76,8 @@ const ForgotPasswordPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 rightElement={<Mail className="size-5 text-muted-foreground" />}
+                error={error}
+                required
               />
 
               <AuthButton type="submit" isLoading={isLoading}>
@@ -83,15 +98,17 @@ const ForgotPasswordPage = () => {
             <div className="text-center space-y-6">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                 <p className="text-green-700 dark:text-green-300 text-sm">
-                  We've sent a password reset link to{" "}
-                  <span className="font-medium">{email}</span>
+                  {successMessage}
                 </p>
               </div>
 
               <p className="text-sm text-muted-foreground">
                 Didn't receive the email? Check your spam folder or{" "}
                 <button
-                  onClick={() => setIsSubmitted(false)}
+                  onClick={() => {
+                    setIsSubmitted(false);
+                    setSuccessMessage("");
+                  }}
                   className="text-primary hover:underline"
                 >
                   try again

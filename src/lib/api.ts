@@ -375,6 +375,33 @@ class ApiClient {
     );
   }
 
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(
+      "/auth/forgot-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      },
+      { skipAuthRedirect: true },
+    );
+  }
+
+  async resetPassword(
+    token: string,
+    password: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(
+      "/auth/reset-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ token, password }),
+      },
+      { skipAuthRedirect: true },
+    );
+  }
+
   async requestWeb3Nonce(
     walletAddress: string,
     appRole?: "buyer" | "agent",
