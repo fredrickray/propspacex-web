@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePropertyCreation } from "../context/PropertyCreationContext";
 import { useRouter } from "next/navigation";
 import {
@@ -17,10 +17,11 @@ import {
   ShowerHead,
   Wallet,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
 import AddPropertyStepHeader from "../components/AddPropertyStepHeader";
 import {
   api,
@@ -34,8 +35,25 @@ const AddPropertyReviewPage = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { property, resetProperty } = usePropertyCreation();
+  const profile = useSignedInProfile();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  useEffect(() => {
+    void api.fetchProfile().catch(() => undefined);
+  }, []);
+
+  const agentName =
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ").trim() ||
+    "Agent";
+  const agentInitials =
+    agentName
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AG";
 
   const mapTypeToApi = (value?: string): PropertyType => {
     const raw = (value ?? "").toLowerCase();
@@ -398,23 +416,24 @@ const AddPropertyReviewPage = () => {
               </p>
               <div className="flex items-center gap-3">
                 <Avatar className="size-11">
-                  <AvatarImage src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100" />
-                  <AvatarFallback>JW</AvatarFallback>
+                  <AvatarFallback>{agentInitials}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">James Wilson</p>
-                  <p className="text-sm text-muted-foreground">
-                    PropSpace Premier
-                  </p>
+                  <p className="font-semibold">{agentName}</p>
+                  <p className="text-sm text-muted-foreground">Agent</p>
                 </div>
               </div>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p className="inline-flex items-center gap-2">
-                  <Mail className="size-4" /> james.wilson@propspace.com
-                </p>
-                <p className="inline-flex items-center gap-2">
-                  <Phone className="size-4" /> +1 (415) 555-0123
-                </p>
+                {profile?.email ? (
+                  <p className="inline-flex items-center gap-2">
+                    <Mail className="size-4" /> {profile.email}
+                  </p>
+                ) : null}
+                {profile?.phone ? (
+                  <p className="inline-flex items-center gap-2">
+                    <Phone className="size-4" /> {profile.phone}
+                  </p>
+                ) : null}
               </div>
             </CardContent>
           </Card>
