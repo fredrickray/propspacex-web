@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { User, Wallet, Bell, Shield, Camera, Sun } from "lucide-react";
+import { AccountSettings } from "@/features/settings/account-settings";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -14,253 +10,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeAppearanceSettings } from "@/components/settings/theme-appearance-settings";
 
-const tabs = [
-  { id: "general", label: "General", icon: User },
-  { id: "appearance", label: "Appearance", icon: Sun },
-  { id: "wallet", label: "Wallet & Security", icon: Wallet },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "privacy", label: "Privacy", icon: Shield },
-];
-
-const SettingsPage = () => {
-  const [activeTab, setActiveTab] = useState("general");
-
-  return (
-    <div className="p-6 lg:p-8 max-w-5xl">
-      {/* Breadcrumb */}
-      <div className="text-sm text-muted-foreground mb-2">
-        Dashboard &gt; Account &gt; Settings
-      </div>
-
-      <h1 className="text-2xl font-bold text-foreground mb-1">
-        Account Settings
-      </h1>
-      <p className="text-muted-foreground mb-6">
-        Manage your personal profile, notification preferences, connected Web3
-        wallets, and security settings.
-      </p>
-
-      <div className="flex gap-8">
-        {/* Sidebar Tabs */}
-        <div className="w-56 space-y-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="size-4" />
-              <span className="font-medium text-sm">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 space-y-6">
-          {activeTab === "general" && <GeneralSettings />}
-          {activeTab === "appearance" && <AppearanceSettings />}
-          {activeTab === "wallet" && <WalletSettings />}
-          {activeTab === "notifications" && <NotificationSettings />}
-          {activeTab === "privacy" && <PrivacySettings />}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AppearanceSettings = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Appearance</CardTitle>
-      <CardDescription>
-        Select light, dark, or match your system settings.
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <ThemeAppearanceSettings />
-    </CardContent>
-  </Card>
-);
-
-const GeneralSettings = () => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between">
-      <div>
-        <CardTitle>Profile & Contact</CardTitle>
+const SettingsPage = () => (
+  <AccountSettings
+    title="Account settings"
+    description="Update your name, email, appearance, and password."
+  >
+    <Card>
+      <CardHeader>
+        <CardTitle>Wallet</CardTitle>
         <CardDescription>
-          Update your public profile and contact details.
+          Balances, escrow holds, and release stay on the wallet screen.
         </CardDescription>
-      </div>
-      <Button variant="link" className="text-primary">
-        Edit Public Profile
-      </Button>
-    </CardHeader>
-    <CardContent className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <Avatar className="size-20">
-            <AvatarImage src="/placeholder.svg" />
-            <AvatarFallback>AM</AvatarFallback>
-          </Avatar>
-          <button className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5">
-            <Camera className="size-3" />
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Allowed: *.png, *.jpg, *.jpeg
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>First Name</Label>
-          <Input defaultValue="Alex" />
-        </div>
-        <div className="space-y-2">
-          <Label>Last Name</Label>
-          <Input defaultValue="Morgan" />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Email Address</Label>
-        <Input type="email" defaultValue="alex.morgan@propspace.com" />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Role / Title</Label>
-        <Input defaultValue="Head of Acquisitions" />
-      </div>
-
-      <Button className="w-full">Save Changes</Button>
-    </CardContent>
-  </Card>
-);
-
-const WalletSettings = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Wallet & Escrow</CardTitle>
-      <CardDescription>
-        Wallet operations are managed on the dedicated wallet screen to keep balances, escrow
-        holds, and release actions in one place.
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="rounded-lg border border-border p-4">
-        <p className="font-medium text-foreground">Buyer release flow is active</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          You approve payout after confirming service completion. If there is a problem, open a
-          dispute before releasing funds.
-        </p>
-      </div>
-      <Button asChild className="w-full sm:w-auto">
-        <Link href="/buyer/wallet">Open wallet dashboard</Link>
-      </Button>
-    </CardContent>
-  </Card>
-);
-
-const NotificationSettings = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Notifications</CardTitle>
-      <CardDescription>
-        Choose how you want to be notified of activity.
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex items-center justify-between p-3 border rounded-lg">
-        <div className="flex items-center gap-3">
-          <Bell className="size-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">Email Digests</p>
-            <p className="text-xs text-muted-foreground">
-              Receive a weekly summary of new properties matching your criteria.
-            </p>
-          </div>
-        </div>
-        <Switch defaultChecked />
-      </div>
-
-      <div className="flex items-center justify-between p-3 border rounded-lg">
-        <div className="flex items-center gap-3">
-          <Bell className="size-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">Instant Property Alerts</p>
-            <p className="text-xs text-muted-foreground">
-              Get notified immediately when a high-priority asset hits the
-              market.
-            </p>
-          </div>
-        </div>
-        <Switch defaultChecked />
-      </div>
-
-      <div className="flex items-center justify-between p-3 border rounded-lg">
-        <div className="flex items-center gap-3">
-          <Bell className="size-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">Agent Messages</p>
-            <p className="text-xs text-muted-foreground">
-              Allow agents to message you directly through the platform.
-            </p>
-          </div>
-        </div>
-        <Switch />
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const PrivacySettings = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Privacy</CardTitle>
-      <CardDescription>
-        Control who can see your profile and data.
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex items-center justify-between p-3 border rounded-lg">
-        <div className="flex items-center gap-3">
-          <Shield className="size-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">Private Profile</p>
-            <p className="text-xs text-muted-foreground">
-              When enabled, your profile is hidden from public directories.
-            </p>
-          </div>
-        </div>
-        <Switch />
-      </div>
-
-      <div className="mt-6">
-        <p className="text-destructive font-medium text-sm mb-3">Danger Zone</p>
-        <div className="border border-destructive/30 rounded-lg p-4 bg-destructive/5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">
-                Once you delete your account, there is no going back. Please be
-                certain.
-              </p>
-            </div>
-            <Button variant="destructive" size="sm">
-              Delete Account
-            </Button>
-          </div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
+      </CardHeader>
+      <CardContent>
+        <Button asChild>
+          <Link href="/buyer/wallet">Open wallet</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  </AccountSettings>
 );
 
 export default SettingsPage;

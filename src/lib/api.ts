@@ -169,6 +169,45 @@ export type CreatePropertyRequest = {
   appraisalReport?: File;
 };
 
+function accountText(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function parseAccountUser(data: unknown, fallback: User | null): User | null {
+  const root =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+  const nested = root?.user;
+  const row =
+    nested && typeof nested === "object"
+      ? (nested as Record<string, unknown>)
+      : root;
+  if (!row) return fallback;
+
+  const userId = accountText(row.userId, row.id, row._id) || fallback?.userId || "";
+  const email = accountText(row.email) || fallback?.email || "";
+  if (!userId && !email) return fallback;
+
+  const role = accountText(row.appRole, row.role).toLowerCase();
+  return {
+    userId,
+    email,
+    firstName: accountText(row.firstName, row.first_name) || fallback?.firstName || "",
+    lastName: accountText(row.lastName, row.last_name) || fallback?.lastName || "",
+    phone: accountText(row.phone) || fallback?.phone || "",
+    appRole:
+      role === AppRole.Admin || role === AppRole.Agent || role === AppRole.Buyer
+        ? role
+        : fallback?.appRole ?? AppRole.Buyer,
+    isVerified:
+      typeof row.isVerified === "boolean"
+        ? row.isVerified
+        : (fallback?.isVerified ?? false),
+  };
+}
+
 class ApiClient {
   private readonly authCookieName = "propspacex_auth_token";
   private readonly roleCookieName = "propspacex_role";
@@ -481,7 +520,48 @@ class ApiClient {
 
   getProfile(): User | null {
     const userJson = this.getCookie(this.profileCookieName);
-    return userJson ? JSON.parse(userJson) : null;
+    if (!userJson) return null;
+    try {
+      return JSON.parse(userJson) as User;
+    } catch {
+      return null;
+    }
+  }
+
+  storeProfile(user: User) {
+    const current = this.getProfile();
+    this.setCookie(
+      this.profileCookieName,
+      JSON.stringify({ ...current, ...user }),
+    );
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("propspacex-profile-updated"));
+    }
+  }
+
+  async fetchProfile(): Promise<User> {
+    const data = await this.request<unknown>("/users/profile");
+    const user = parseAccountUser(data, this.getProfile());
+    if (!user) throw new Error("Profile was not returned.");
+    this.storeProfile(user);
+    return user;
+  }
+
+  async updateMyProfile(input: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  }): Promise<User> {
+    await this.request("/users/profile", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+    return this.fetchProfile();
+  }
+
+  async deleteMyAccount(): Promise<void> {
+    await this.request("/users/account", { method: "DELETE" });
+    this.signout();
   }
 
   async getUsers(page = 1, limit = 100): Promise<unknown> {
