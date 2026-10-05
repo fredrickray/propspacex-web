@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ResetPasswordPage />;
+  return (
+    <Suspense>
+      <ResetPasswordPage />
+    </Suspense>
+  );
 }

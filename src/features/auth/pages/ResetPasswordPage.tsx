@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Shield, ArrowLeft, Lock, AlertCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Shield, ArrowLeft, AlertCircle } from "lucide-react";
 import {
   AuthLayout,
   AuthCard,
@@ -10,19 +11,63 @@ import {
   AuthInput,
   AuthButton,
   PasswordStrength,
-  AuthFooter,
 } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+
+function passwordRuleError(password: string) {
+  if (password.length < 8) return "Password must be at least 8 characters long";
+  if (!/[A-Z]/.test(password)) {
+    return "Password must contain at least 1 uppercase letter";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "Password must contain at least 1 lowercase letter";
+  }
+  if (!/\d/.test(password)) return "Password must contain at least 1 number";
+  return "";
+}
 
 const ResetPasswordPage = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const ruleError = password ? passwordRuleError(password) : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    if (!token) {
+      setError("Open the reset link from your email to choose a new password.");
+      return;
+    }
+    const rule = passwordRuleError(password);
+    if (rule) {
+      setError(rule);
+      return;
+    }
+    if (password !== confirmPassword) return;
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    try {
+      const response = await api.resetPassword(token, password);
+      toast({
+        title: "Password updated",
+        description: response.message || "You can sign in with your new password.",
+      });
+      router.push("/auth/login");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not update your password.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -60,12 +105,18 @@ const ResetPasswordPage = () => {
           />
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {!token ? (
+              <p className="text-sm text-destructive">
+                Open the reset link from your email to choose a new password.
+              </p>
+            ) : null}
             <AuthInput
               label="New Password"
               type="password"
-              placeholder="Enter at least 12 characters"
+              placeholder="Enter at least 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              error={ruleError || undefined}
             />
 
             <AuthInput
@@ -83,10 +134,19 @@ const ResetPasswordPage = () => {
 
             <PasswordStrength password={password} />
 
+            {error ? (
+              <p className="text-sm text-destructive">{error}</p>
+            ) : null}
+
             <AuthButton
               type="submit"
               isLoading={isLoading}
-              disabled={!password || password !== confirmPassword}
+              disabled={
+                !token ||
+                !password ||
+                password !== confirmPassword ||
+                Boolean(ruleError)
+              }
             >
               Update Password
             </AuthButton>
