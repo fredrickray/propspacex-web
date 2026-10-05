@@ -483,8 +483,12 @@ class ApiClient {
     return userJson ? JSON.parse(userJson) : null;
   }
 
-  async getUsers(): Promise<User[]> {
-    return this.request<User[]>("/users");
+  async getUsers(page = 1, limit = 100): Promise<unknown> {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    return this.request(`/users?${params.toString()}`, {}, { skipAuthRedirect: true });
   }
 
   async getUserById(id: string): Promise<User> {
