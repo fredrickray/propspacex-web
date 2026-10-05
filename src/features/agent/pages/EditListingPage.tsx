@@ -190,6 +190,7 @@ const EditListingPage = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [preserved, setPreserved] = useState<PreservedDetails | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
+  const [savedStatus, setSavedStatus] = useState("");
 
   useEffect(() => {
     if (!id) {
@@ -206,7 +207,9 @@ const EditListingPage = () => {
         const raw = unwrapSingleProperty(await api.getPropertyById(id));
         if (!isRecord(raw)) throw new Error("Could not read this listing.");
         if (cancelled) return;
-        setForm(readForm(raw));
+        const nextForm = readForm(raw);
+        setForm(nextForm);
+        setSavedStatus(nextForm.status);
         setPreserved(readPreserved(raw));
         setPhotos(getImageUrls(raw));
       } catch (loadError) {
@@ -270,7 +273,10 @@ const EditListingPage = () => {
         title,
         description,
         type: form.type as PropertyType,
-        status: form.status as PropertyStatus,
+        ...(savedStatus === "available" &&
+        (form.status === "sold" || form.status === "rented")
+          ? { status: form.status as PropertyStatus }
+          : {}),
         purpose: form.purpose,
         price,
         currency: form.currency as Currency,
@@ -446,20 +452,31 @@ const EditListingPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Listing status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(status) => update({ status })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="rented">Rented</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {savedStatus === "available" ? (
+                    <Select
+                      value={form.status}
+                      onValueChange={(status) => update({ status })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="sold">Sold</SelectItem>
+                        <SelectItem value="rented">Rented</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                      {savedStatus === "rejected"
+                        ? "Rejected. An admin decides when it can go live."
+                        : savedStatus === "sold"
+                          ? "Sold. This listing stays off the catalog."
+                          : savedStatus === "rented"
+                            ? "Rented. This listing stays off the catalog."
+                            : "Pending review. An admin approves it before it is available."}
+                    </p>
+                  )}
                 </div>
               </div>
 

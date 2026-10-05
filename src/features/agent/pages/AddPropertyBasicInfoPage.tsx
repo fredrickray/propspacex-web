@@ -24,7 +24,6 @@ const AddPropertyBasicInfoPage = () => {
   const { property, setProperty } = usePropertyCreation();
   const [title, setTitle] = useState(property.title ?? "");
   const [type, setType] = useState(property.type ?? "apartment");
-  const [status, setStatus] = useState(property.status ?? "available");
   const [purpose, setPurpose] = useState<"sale" | "rent">(
     property.purpose === "rent" ? "rent" : "sale",
   );
@@ -48,7 +47,7 @@ const AddPropertyBasicInfoPage = () => {
     setProperty({
       title: title.trim(),
       type,
-      status,
+      status: "pending",
       purpose,
       price: priceNumeric,
       currency,
@@ -134,19 +133,11 @@ const AddPropertyBasicInfoPage = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Listing Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                  <SelectItem value="rented">Rented</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Review</Label>
+              <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                This listing is submitted as pending. It appears in the catalog after an admin approves it.
+              </p>
             </div>
           </div>
 
