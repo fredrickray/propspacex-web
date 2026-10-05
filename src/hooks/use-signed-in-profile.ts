@@ -8,7 +8,10 @@ export function useSignedInProfile(): User | null {
   const [profile, setProfile] = useState<User | null>(null);
 
   useEffect(() => {
-    setProfile(api.getProfile());
+    const sync = () => setProfile(api.getProfile());
+    sync();
+    window.addEventListener("propspacex-profile-updated", sync);
+    return () => window.removeEventListener("propspacex-profile-updated", sync);
   }, []);
 
   return profile;
