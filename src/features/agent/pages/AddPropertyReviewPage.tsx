@@ -45,14 +45,6 @@ const AddPropertyReviewPage = () => {
     return PropertyType.APARTMENT;
   };
 
-  const mapStatusToApi = (value?: string): PropertyStatus => {
-    const raw = (value ?? "").toLowerCase();
-    if (raw === PropertyStatus.RENTED) return PropertyStatus.RENTED;
-    if (raw === PropertyStatus.SOLD) return PropertyStatus.SOLD;
-    if (raw === PropertyStatus.PENDING) return PropertyStatus.PENDING;
-    return PropertyStatus.AVAILABLE;
-  };
-
   const mapCurrencyToApi = (value?: string): Currency => {
     const raw = (value ?? "").toUpperCase();
     if (raw === Currency.ETH) return Currency.ETH;
@@ -141,7 +133,7 @@ const AddPropertyReviewPage = () => {
           title,
           description,
           type: mapTypeToApi(property.type),
-          status: mapStatusToApi(property.status),
+          status: PropertyStatus.PENDING,
           purpose: property.purpose === "rent" ? "rent" : "sale",
           price: Number(property.price ?? 0),
           currency: mapCurrencyToApi(property.currency),
@@ -339,13 +331,16 @@ const AddPropertyReviewPage = () => {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-5 space-y-3">
-              <h3 className="text-2xl font-semibold">Publish Property</h3>
+              <h3 className="text-2xl font-semibold">Submit for review</h3>
+              <p className="text-sm text-muted-foreground">
+                An admin approves the listing before it is available.
+              </p>
               <Button
                 className="w-full h-11 gap-2"
                 onClick={handlePublish}
                 disabled={isPublishing || isSavingDraft}
               >
-                <Rocket className="size-4" /> Publish Now
+                <Rocket className="size-4" /> Submit for review
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button
