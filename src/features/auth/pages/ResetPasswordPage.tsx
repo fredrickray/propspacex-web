@@ -3,15 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, ArrowLeft, AlertCircle } from "lucide-react";
-import {
-  AuthLayout,
-  AuthCard,
-  AuthCardHeader,
-  AuthInput,
-  AuthButton,
-  PasswordStrength,
-} from "../components";
+import { Shield, ArrowLeft } from "lucide-react";
+import { AuthLayout, AuthInput, AuthButton, PasswordStrength } from "../components";
 import PropSpaceLogo from "@/components/icons/PropSpaceLogo";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -72,125 +65,113 @@ const ResetPasswordPage = () => {
 
   return (
     <AuthLayout showHeader={false}>
-      {/* Header */}
-      <header className="border-b border-border bg-surface/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <PropSpaceLogo className="h-11 w-auto" />
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="#"
-                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-              >
-                Support
-              </Link>
-              <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                <span className="material-symbols-outlined text-xl">
-                  light_mode
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 flex items-center justify-center py-12 px-4">
-        <AuthCard className="max-w-lg">
-          <AuthCardHeader
-            icon={<Shield className="size-8" />}
-            title="Secure Your Account"
-            description="Create a new password for your PropSpace account. This password will secure your Web3 access layer and keeps your data fully protected."
-          />
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {!token ? (
-              <p className="text-sm text-destructive">
-                Open the reset link from your email to choose a new password.
+      <div className="grid min-h-dvh md:grid-cols-2">
+        <aside className="hidden flex-col justify-between bg-primary px-10 py-8 text-primary-foreground md:flex">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold">
+            <Shield className="size-5" />
+            PropSpace X
+          </Link>
+          <div className="max-w-sm space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Choose a new password
+              </h1>
+              <p className="text-sm leading-6 text-primary-foreground/80">
+                This replaces the password on your PropSpace X account. The
+                checklist updates as you type.
               </p>
-            ) : null}
-            <AuthInput
-              label="New Password"
-              type="password"
-              placeholder="Enter at least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={ruleError || undefined}
-            />
-
-            <AuthInput
-              label="Confirm New Password"
-              type="password"
-              placeholder="Re-type your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              error={
-                confirmPassword && password !== confirmPassword
-                  ? "Passwords do not match"
-                  : undefined
-              }
-            />
-
-            <PasswordStrength password={password} />
-
-            {error ? (
-              <p className="text-sm text-destructive">{error}</p>
-            ) : null}
-
-            <AuthButton
-              type="submit"
-              isLoading={isLoading}
-              disabled={
-                !token ||
-                !password ||
-                password !== confirmPassword ||
-                Boolean(ruleError)
-              }
-            >
-              Update Password
-            </AuthButton>
-
-            <div className="text-center">
-              <Link
-                href="/auth/login"
-                className="text-primary text-sm font-medium hover:underline inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="size-4" />
-                Back to login
-              </Link>
             </div>
-          </form>
+            <PasswordStrength password={password} tone="inverse" showHeading={false} />
+          </div>
+          <p className="text-sm text-primary-foreground/70">© 2026 PropSpace X</p>
+        </aside>
 
-          {/* Security Note */}
-          <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="size-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">
-                  Security Note
-                </p>
-                <p className="text-amber-700 dark:text-amber-300">
-                  This password will protect your PropSpace X account
-                  credentials. For Web3 interactions, your connected wallet
-                  provides an additional security layer that cannot be
-                  overridden.
+        <div className="flex min-h-dvh flex-col bg-background">
+          <header className="flex h-14 shrink-0 items-center justify-between px-4 sm:px-8">
+            <Link href="/" className="md:hidden">
+              <PropSpaceLogo className="h-9 w-auto" />
+            </Link>
+            <Link
+              href="/auth/login"
+              className="ml-auto text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              Log in
+            </Link>
+          </header>
+
+          <div className="flex flex-1 items-center justify-center px-4 pb-8 sm:px-8">
+            <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
+              <div className="space-y-1 md:hidden">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                  Choose a new password
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  At least 8 characters, with an uppercase letter, a lowercase
+                  letter, and a number.
                 </p>
               </div>
-            </div>
-          </div>
-        </AuthCard>
-      </div>
 
-      {/* Footer */}
-      <footer className="py-6 border-t border-border bg-background">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© 2024 PropSpace X. All rights reserved.</p>
-            <p>Enterprise Real Estate Solutions</p>
+              {!token ? (
+                <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                  Open the reset link from your email to choose a new password.
+                </p>
+              ) : null}
+
+              <AuthInput
+                label="New password"
+                type="password"
+                placeholder="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+
+              <AuthInput
+                label="Confirm password"
+                type="password"
+                placeholder="Re-type your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                error={
+                  confirmPassword && password !== confirmPassword
+                    ? "Passwords do not match"
+                    : undefined
+                }
+              />
+
+              <div className="md:hidden">
+                <PasswordStrength password={password} columns={2} />
+              </div>
+
+              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+              <AuthButton
+                type="submit"
+                isLoading={isLoading}
+                disabled={
+                  !token ||
+                  !password ||
+                  password !== confirmPassword ||
+                  Boolean(ruleError)
+                }
+              >
+                Update password
+              </AuthButton>
+
+              <div className="text-center">
+                <Link
+                  href="/auth/login"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  <ArrowLeft className="size-4" />
+                  Back to login
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
-      </footer>
+      </div>
     </AuthLayout>
   );
 };
