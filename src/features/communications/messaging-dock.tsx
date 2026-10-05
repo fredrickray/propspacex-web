@@ -17,6 +17,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSignedInProfile } from "@/hooks/use-signed-in-profile";
+import { api } from "@/lib/api";
+import { parseDealEnvelope, parseDealList, type RemoteDeal } from "@/features/deals/remote-deal";
 import { cn } from "@/lib/utils";
 import { useCommunications } from "./communications-context";
 import type { Conversation } from "./communications-types";
@@ -157,14 +159,13 @@ function MessagingDockPanel({
 }) {
   const {
     conversations,
-    engagements,
     postMessage,
-    agentStartDealForConversation,
     chatConnectionStatus,
     isRemoteConversation,
   } = useCommunications();
   const { listOpen, threadId, openList, closeList, openThread, closeThread } = useMessagingDock();
   const router = useRouter();
+  const [deals, setDeals] = useState<RemoteDeal[]>([]);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -202,12 +203,24 @@ function MessagingDockPanel({
 
   const engagement = useMemo(() => {
     if (!selected) return undefined;
-    if (selected.engagementId) {
-      const linked = engagements.find((item) => item.id === selected.engagementId);
-      if (linked) return linked;
-    }
-    return engagements.find((item) => item.conversationId === selected.id);
-  }, [engagements, selected]);
+    return deals.find((item) => item.conversationId === selected.id);
+  }, [deals, selected]);
+
+  useEffect(() => {
+    if (!listOpen && !threadId) return;
+    let cancelled = false;
+    void api
+      .listDeals(1, 50)
+      .then((raw) => {
+        if (!cancelled) setDeals(parseDealList(raw));
+      })
+      .catch(() => {
+        if (!cancelled) setDeals([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [listOpen, threadId]);
 
   useEffect(() => {
     if (!listOpen && !threadId) return;
@@ -244,10 +257,20 @@ function MessagingDockPanel({
     setDraft("");
   };
 
-  const startDeal = () => {
+  const startDeal = async () => {
     if (!selected || role !== "agent") return;
-    const existingId = engagement?.id ?? agentStartDealForConversation(selected.id);
-    if (existingId) router.push(`/agent/deals/${existingId}`);
+    if (engagement) {
+      router.push(`/agent/deals/${engagement.id}`);
+      return;
+    }
+    try {
+      const created = parseDealEnvelope(
+        await api.createOrGetDeal(selected.id, selected.propertyTitle),
+      );
+      if (created) router.push(`/agent/deals/${created.id}`);
+    } catch {
+      return;
+    }
   };
 
   const panelHeight = "h-[min(34rem,calc(100dvh-4.5rem))]";
@@ -308,7 +331,7 @@ function MessagingDockPanel({
                   variant="ghost"
                   size="sm"
                   className="hidden h-8 px-2 sm:inline-flex"
-                  onClick={startDeal}
+                  onClick={() => void startDeal()}
                 >
                   Start deal
                 </Button>

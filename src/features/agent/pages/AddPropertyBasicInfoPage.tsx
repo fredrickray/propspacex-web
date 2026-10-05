@@ -25,6 +25,9 @@ const AddPropertyBasicInfoPage = () => {
   const [title, setTitle] = useState(property.title ?? "");
   const [type, setType] = useState(property.type ?? "apartment");
   const [status, setStatus] = useState(property.status ?? "available");
+  const [purpose, setPurpose] = useState<"sale" | "rent">(
+    property.purpose === "rent" ? "rent" : "sale",
+  );
   const formatPriceThousands = (rawDigits: string) => {
     if (!rawDigits) return "";
     return BigInt(rawDigits).toLocaleString("en-US");
@@ -46,6 +49,7 @@ const AddPropertyBasicInfoPage = () => {
       title: title.trim(),
       type,
       status,
+      purpose,
       price: priceNumeric,
       currency,
       description: description.trim(),
@@ -110,6 +114,22 @@ const AddPropertyBasicInfoPage = () => {
                   <SelectItem value="house">House</SelectItem>
                   <SelectItem value="land">Land</SelectItem>
                   <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Offered as</Label>
+              <Select
+                value={purpose}
+                onValueChange={(value) => setPurpose(value === "rent" ? "rent" : "sale")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sale">Sale</SelectItem>
+                  <SelectItem value="rent">Rent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

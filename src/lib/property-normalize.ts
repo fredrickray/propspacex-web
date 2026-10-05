@@ -173,6 +173,7 @@ export function normalizePropertyForCard(raw: unknown): NormalizedPropertyCard |
   );
 
   const status = pickString(raw.status).toLowerCase();
+  const purpose = pickString(raw.purpose).toLowerCase() === "rent" ? "rent" : "sale";
   const isPending = status === "pending";
 
   return {
@@ -185,11 +186,17 @@ export function normalizePropertyForCard(raw: unknown): NormalizedPropertyCard |
     baths,
     sqft: area > 0 ? Math.round(area).toLocaleString() : "—",
     badge:
-      status === "available"
-        ? "For Sale"
-        : status
-          ? status.charAt(0).toUpperCase() + status.slice(1)
-          : "Listing",
+      status === "sold"
+        ? "Sold"
+        : status === "rented"
+          ? "Rented"
+          : purpose === "rent"
+            ? "For Rent"
+            : status === "available"
+              ? "For Sale"
+              : status
+                ? status.charAt(0).toUpperCase() + status.slice(1)
+                : "Listing",
     isPending,
   };
 }
@@ -226,6 +233,7 @@ function readAreaValue(raw: Record<string, unknown>): number {
 export type CatalogListing = NormalizedPropertyCard & {
   propertyType: string;
   status: string;
+  purpose: "sale" | "rent";
   priceValue: number;
   areaValue: number;
   amenityText: string;
@@ -241,6 +249,7 @@ export function normalizeCatalogListing(raw: unknown): CatalogListing | null {
     ...card,
     propertyType: pickString(raw.type).toLowerCase(),
     status: pickString(raw.status).toLowerCase(),
+    purpose: pickString(raw.purpose).toLowerCase() === "rent" ? "rent" : "sale",
     priceValue: pickNumber(raw.price),
     areaValue: readAreaValue(raw),
     amenityText: collectAmenityText(raw),

@@ -75,9 +75,12 @@ const PropertySearchPage = ({
     setLoading(true);
     setError(null);
     try {
-      const raw = await api.getProperties(
-        publicCatalog ? { skipAuthRedirect: true } : undefined,
-      );
+      const purpose =
+        intent === "rent" ? "rent" : intent === "buy" ? "sale" : undefined;
+      const raw = await api.getProperties({
+        ...(publicCatalog ? { skipAuthRedirect: true } : {}),
+        ...(purpose ? { purpose } : {}),
+      });
       const rows = parsePropertyListEnvelope(raw);
       const cards: CatalogListing[] = [];
       for (const row of rows) {
@@ -93,7 +96,7 @@ const PropertySearchPage = ({
     } finally {
       setLoading(false);
     }
-  }, [publicCatalog]);
+  }, [intent, publicCatalog]);
 
   useEffect(() => {
     void load();
@@ -167,13 +170,6 @@ const PropertySearchPage = ({
                   ? "Loading…"
                   : `${sorted.length} propert${sorted.length === 1 ? "y" : "ies"} found`}
               </p>
-              {intent === "rent" && !loading ? (
-                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                  Listings are marked available, pending, rented, or sold. None
-                  of those means a home is offered for rent, so this view stays
-                  empty until the catalog has a for-rent flag.
-                </p>
-              ) : null}
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm">
