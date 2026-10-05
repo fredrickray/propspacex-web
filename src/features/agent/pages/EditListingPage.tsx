@@ -44,6 +44,7 @@ type EditForm = {
   description: string;
   type: string;
   status: string;
+  purpose: "sale" | "rent";
   price: string;
   currency: string;
   address: string;
@@ -161,6 +162,7 @@ function readForm(raw: Record<string, unknown>): EditForm {
     description: asString(raw.description),
     type: asString(raw.type) || PropertyType.APARTMENT,
     status: asString(raw.status) || PropertyStatus.AVAILABLE,
+    purpose: asString(raw.purpose).toLowerCase() === "rent" ? "rent" : "sale",
     price: formatPrice(price),
     currency: asString(raw.currency) || Currency.NGN,
     address: asString(location.address),
@@ -269,6 +271,7 @@ const EditListingPage = () => {
         description,
         type: form.type as PropertyType,
         status: form.status as PropertyStatus,
+        purpose: form.purpose,
         price,
         currency: form.currency as Currency,
         location: {
@@ -421,6 +424,23 @@ const EditListingPage = () => {
                       <SelectItem value="house">House</SelectItem>
                       <SelectItem value="land">Land</SelectItem>
                       <SelectItem value="commercial">Commercial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Offered as</Label>
+                  <Select
+                    value={form.purpose}
+                    onValueChange={(purpose) =>
+                      update({ purpose: purpose === "rent" ? "rent" : "sale" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="rent">Rent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

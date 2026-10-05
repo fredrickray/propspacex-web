@@ -16,6 +16,7 @@ export interface Property {
   description: string;
   type: PropertyType;
   status: PropertyStatus;
+  purpose?: "sale" | "rent";
   price: number;
   currency: Currency;
   location: IPropertyLocation;
@@ -499,11 +500,13 @@ class ApiClient {
   async getProperties(options?: {
     skipAuthRedirect?: boolean;
     status?: PropertyStatus;
+    purpose?: "sale" | "rent";
     page?: number;
     limit?: number;
   }): Promise<unknown[]> {
     const params = new URLSearchParams();
     if (options?.status) params.set("status", options.status);
+    if (options?.purpose) params.set("purpose", options.purpose);
     if (options?.page) params.set("page", String(options.page));
     if (options?.limit) params.set("limit", String(options.limit));
     const query = params.toString();
@@ -750,6 +753,57 @@ class ApiClient {
     if (typeof input?.status === "number") query.set("status", String(input.status));
     const qs = query.toString();
     return this.request<EscrowListResponse>(`/escrows${qs ? `?${qs}` : ""}`);
+  }
+
+  async listDeals(page = 1, limit = 50): Promise<unknown> {
+    const query = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    return this.request(`/deals?${query.toString()}`);
+  }
+
+  async getDeal(dealId: string): Promise<unknown> {
+    return this.request(`/deals/${dealId}`);
+  }
+
+  async createOrGetDeal(conversationId: string, propertyTitle?: string): Promise<unknown> {
+    return this.request("/deals", {
+      method: "POST",
+      body: JSON.stringify({
+        conversationId,
+        propertyTitle: propertyTitle ?? "",
+      }),
+    });
+  }
+
+  async quoteDeal(
+    dealId: string,
+    input: { amountMinor: number; platformFeeMinor: number; quoteNote?: string },
+  ): Promise<unknown> {
+    return this.request(`/deals/${dealId}/quote`, {
+      method: "POST",
+      body: JSON.stringify({
+        amountMinor: input.amountMinor,
+        platformFeeMinor: input.platformFeeMinor,
+        quoteNote: input.quoteNote ?? "",
+      }),
+    });
+  }
+
+  async acceptDealQuote(dealId: string, idempotencyKey: string): Promise<unknown> {
+    return this.request(`/deals/${dealId}/accept-quote`, {
+      method: "POST",
+      body: JSON.stringify({ idempotencyKey }),
+    });
+  }
+
+  async getVerifications(page = 1, limit = 50): Promise<unknown> {
+    const query = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    return this.request(`/admin/verifications?${query.toString()}`);
   }
 
   async listMyWithdrawals(input?: {

@@ -39,6 +39,7 @@ export interface CreatePropertyPayload {
   description: string;
   type: string;
   status: string;
+  purpose?: "sale" | "rent";
   price: number;
   currency: string;
   location: PropertyLocation;

@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { CommunicationsProvider } from "@/features/communications/communications-context";
 import { MessagingDockProvider } from "@/features/communications/messaging-dock";
-import { EscrowSimulationProvider } from "@/features/payments/escrow-context";
 import { useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -23,15 +22,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <EscrowSimulationProvider>
-            <CommunicationsProvider>
-              <MessagingDockProvider>
-                <Toaster />
-                <Sonner />
-                {children}
-              </MessagingDockProvider>
-            </CommunicationsProvider>
-          </EscrowSimulationProvider>
+          <CommunicationsProvider>
+            <MessagingDockProvider>
+              <Toaster />
+              <Sonner />
+              {children}
+            </MessagingDockProvider>
+          </CommunicationsProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

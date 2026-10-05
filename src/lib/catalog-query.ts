@@ -133,13 +133,23 @@ export function formatCompactNaira(value: number): string {
 }
 
 export function listingMatchesIntent(
-  status: string,
+  listing: { status: string; purpose?: string },
   intent: ListingIntent | "",
 ): boolean {
   if (!intent) return true;
-  if (intent === "buy") return status === "available" || status === "pending";
-  if (intent === "sold") return status === "sold";
-  return false;
+  const purpose = listing.purpose === "rent" ? "rent" : "sale";
+  if (intent === "sold") return listing.status === "sold";
+  if (intent === "buy") {
+    return (
+      purpose === "sale" &&
+      (listing.status === "available" || listing.status === "pending")
+    );
+  }
+  return (
+    purpose === "rent" &&
+    listing.status !== "sold" &&
+    listing.status !== "rented"
+  );
 }
 
 export function listingMatchesFilters(
@@ -147,7 +157,7 @@ export function listingMatchesFilters(
   filters: CatalogFilters,
 ): boolean {
   if (filters.type && listing.propertyType !== filters.type) return false;
-  if (!listingMatchesIntent(listing.status, filters.intent)) return false;
+  if (!listingMatchesIntent(listing, filters.intent)) return false;
   if (filters.minPrice != null && listing.priceValue < filters.minPrice) return false;
   if (filters.maxPrice != null && listing.priceValue > filters.maxPrice) return false;
   if (filters.minBeds != null && listing.beds < filters.minBeds) return false;

@@ -13,12 +13,10 @@ import {
 import type {
   ChatMessage,
   Conversation,
-  EngagementDeal,
-  Lead,
   SavedSearchRecord,
 } from "./communications-types";
-import { useEscrowSimulation } from "@/features/payments/escrow-context";
-import { api, AppRole } from "@/lib/api";
+import { parseDealEnvelope } from "@/features/deals/remote-deal";
+import { api } from "@/lib/api";
 
 const STORAGE_KEY = "propspacex_comm_v1";
 const SAVED_SEARCHES_KEY = "propspacex_saved_searches_v1";
@@ -37,8 +35,6 @@ function nowIso() {
 
 type CommState = {
   conversations: Conversation[];
-  engagements: EngagementDeal[];
-  leads: Lead[];
 };
 
 type WsIncomingEvent = {
@@ -67,8 +63,6 @@ type RemoteConversationMeta = {
 function defaultCommState(): CommState {
   return {
     conversations: [],
-    engagements: [],
-    leads: [],
   };
 }
 
@@ -155,8 +149,6 @@ function isUuidLike(value: string | null | undefined): value is string {
 
 type CommunicationsContextValue = {
   conversations: Conversation[];
-  engagements: EngagementDeal[];
-  leads: Lead[];
   savedSearches: SavedSearchRecord[];
   chatConnectionStatus: "idle" | "connecting" | "connected" | "reconnecting" | "error";
   chatDebug: {
@@ -177,13 +169,7 @@ type CommunicationsContextValue = {
     phone: string;
     intent: string | null;
     message: string;
-  }) => Promise<{ conversationId: string; engagementId: string; isRemote: boolean }>;
-  agentStartDealForConversation: (conversationId: string) => string | null;
-  agentQuoteEngagement: (
-    engagementId: string,
-    input: { amountNaira: number; platformFeeNaira: number; note?: string },
-  ) => void;
-  buyerAcceptEngagement: (engagementId: string) => string | null;
+  }  ) => Promise<{ conversationId: string; engagementId: string; isRemote: boolean }>;
   addSavedSearch: (input: Omit<SavedSearchRecord, "id" | "createdAtIso">) => void;
   updateSavedSearch: (id: string, patch: Partial<SavedSearchRecord>) => void;
   deleteSavedSearch: (id: string) => void;
@@ -192,7 +178,6 @@ type CommunicationsContextValue = {
 const CommunicationsContext = createContext<CommunicationsContextValue | null>(null);
 
 export function CommunicationsProvider({ children }: { children: ReactNode }) {
-  const { registerAwaitingFundingDeal } = useEscrowSimulation();
   const [state, setState] = useState<CommState>(() => defaultCommState());
   const [savedSearches, setSavedSearches] = useState<SavedSearchRecord[]>([]);
   const [chatConnectionStatus, setChatConnectionStatus] = useState<
@@ -234,15 +219,8 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
         const remoteConversations = saved.conversations.filter((conversation) =>
           isUuidLike(conversation.id),
         );
-        const remoteConversationIds = new Set(remoteConversations.map((conversation) => conversation.id));
         setState({
           conversations: remoteConversations,
-          engagements: Array.isArray(saved.engagements)
-            ? saved.engagements.filter((engagement) => remoteConversationIds.has(engagement.conversationId))
-            : [],
-          leads: Array.isArray(saved.leads)
-            ? saved.leads.filter((lead) => remoteConversationIds.has(lead.conversationId))
-            : [],
         });
       } else {
         setState(defaultCommState());
@@ -732,48 +710,11 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       }
 
       const conversationId = remoteConversationId;
-      const engagementId = uid("eng");
       const resolvedAgentName = input.agentId
         ? remoteMeta?.agentName ||
           userNameByIdRef.current.get(input.agentId) ||
           displayNameFromId("Agent", input.agentId)
         : "Listing agent";
-      const title =
-        input.intent === "tour"
-          ? "Property tour"
-          : input.intent === "offer"
-            ? "Offer discussion"
-            : "Buyer inquiry";
-      const engagement: EngagementDeal = {
-        id: engagementId,
-        conversationId,
-        propertyId: input.propertyId,
-        propertyTitle: input.propertyTitle,
-        buyerName: input.buyerName,
-        buyerEmail: input.buyerEmail,
-        agentName: resolvedAgentName,
-        title,
-        description: input.message,
-        amountCents: 0,
-        platformFeeCents: 0,
-        status: "open",
-        escrowWalletId: null,
-        createdAtIso: nowIso(),
-        updatedAtIso: nowIso(),
-      };
-      const lead: Lead = {
-        id: uid("lead"),
-        propertyId: input.propertyId,
-        propertyTitle: input.propertyTitle,
-        buyerName: input.buyerName,
-        buyerEmail: input.buyerEmail,
-        phone: input.phone,
-        intent: input.intent,
-        message: input.message,
-        conversationId,
-        engagementId,
-        createdAtIso: nowIso(),
-      };
       const conv: Conversation = {
         id: conversationId,
         propertyId: input.propertyId,
@@ -783,13 +724,11 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
           remoteMeta?.buyerName ||
           userNameByIdRef.current.get(remoteMeta?.buyerId || "") ||
           input.buyerName,
-        engagementId,
+        engagementId: null,
         messages: [],
       };
       setState((prev) => ({
         conversations: [conv, ...prev.conversations.filter((row) => row.id !== conversationId)],
-        engagements: [engagement, ...prev.engagements],
-        leads: [lead, ...prev.leads],
       }));
 
       if (input.message.trim()) {
@@ -799,142 +738,20 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      const created = parseDealEnvelope(
+        await api.createOrGetDeal(conversationId, input.propertyTitle),
+      );
+      if (!created) {
+        throw new Error("Could not open a deal for this conversation.");
+      }
+
       return {
         conversationId,
-        engagementId,
+        engagementId: created.id,
         isRemote: true,
       };
     },
     [createOrGetRemoteConversation, sendWsRequest, waitForChatConnection],
-  );
-
-  const agentStartDealForConversation = useCallback(
-    (conversationId: string): string | null => {
-      if (!conversationId) return null;
-      const existingByLink = stateRef.current.engagements.find(
-        (e) => e.conversationId === conversationId,
-      );
-      if (existingByLink) return existingByLink.id;
-      const conv = stateRef.current.conversations.find((c) => c.id === conversationId);
-      if (!conv) return null;
-      if (conv.engagementId) {
-        const linked = stateRef.current.engagements.find((e) => e.id === conv.engagementId);
-        if (linked) return linked.id;
-      }
-      const engagementId = uid("eng");
-      const engagement: EngagementDeal = {
-        id: engagementId,
-        conversationId,
-        propertyId: conv.propertyId,
-        propertyTitle: conv.propertyTitle,
-        buyerName: conv.buyerName,
-        buyerEmail: "",
-        agentName: conv.agentName,
-        title: "Buyer inquiry",
-        description: "",
-        amountCents: 0,
-        platformFeeCents: 0,
-        status: "open",
-        escrowWalletId: null,
-        createdAtIso: nowIso(),
-        updatedAtIso: nowIso(),
-      };
-      setState((prev) => ({
-        ...prev,
-        engagements: [engagement, ...prev.engagements],
-        conversations: prev.conversations.map((c) =>
-          c.id === conversationId ? { ...c, engagementId } : c,
-        ),
-      }));
-      return engagementId;
-    },
-    [],
-  );
-
-  const agentQuoteEngagement = useCallback(
-    (
-      engagementId: string,
-      input: { amountNaira: number; platformFeeNaira: number; note?: string },
-    ) => {
-      const amountCents = Math.round(input.amountNaira * 100);
-      const platformFeeCents = Math.round(input.platformFeeNaira * 100);
-      const note = input.note?.trim();
-      setState((prev) => {
-        const eng = prev.engagements.find((e) => e.id === engagementId);
-        if (!eng) return prev;
-        const conv = prev.conversations.find((c) => c.id === eng.conversationId);
-        const quoteMsg: ChatMessage = {
-          id: uid("msg"),
-          role: "agent",
-          text:
-            (note ? `${note}\n\n` : "") +
-            `Quoted total ${(amountCents / 100).toLocaleString("en-NG", { style: "currency", currency: "NGN" })} (platform fee ${(platformFeeCents / 100).toLocaleString("en-NG", { style: "currency", currency: "NGN" })}).`,
-          createdAtIso: nowIso(),
-        };
-        return {
-          ...prev,
-          engagements: prev.engagements.map((e) =>
-            e.id === engagementId
-              ? {
-                  ...e,
-                  amountCents,
-                  platformFeeCents,
-                  status: "quoted" as const,
-                  updatedAtIso: nowIso(),
-                }
-              : e,
-          ),
-          conversations: prev.conversations.map((c) =>
-            c.id === eng.conversationId
-              ? { ...c, messages: [...c.messages, quoteMsg] }
-              : c,
-          ),
-        };
-      });
-    },
-    [],
-  );
-
-  const buyerAcceptEngagement = useCallback(
-    (engagementId: string) => {
-      const eng = stateRef.current.engagements.find((e) => e.id === engagementId);
-      if (!eng || eng.status !== "quoted" || eng.amountCents <= 0) return null;
-      const escrowId = registerAwaitingFundingDeal({
-        engagementId: eng.id,
-        title: eng.title,
-        buyerName: eng.buyerName,
-        agentName: eng.agentName,
-        amountCents: eng.amountCents,
-        platformFeeCents: eng.platformFeeCents,
-      });
-      if (!escrowId) return null;
-      const acceptMsg: ChatMessage = {
-        id: uid("msg"),
-        role: "buyer",
-        text: "I accept the quote. I'm heading to Wallet to fund escrow.",
-        createdAtIso: nowIso(),
-      };
-      setState((prev) => ({
-        ...prev,
-        engagements: prev.engagements.map((e) =>
-          e.id === engagementId
-            ? {
-                ...e,
-                status: "funding_ready" as const,
-                escrowWalletId: escrowId,
-                updatedAtIso: nowIso(),
-              }
-            : e,
-        ),
-        conversations: prev.conversations.map((c) =>
-          c.id === eng.conversationId
-            ? { ...c, messages: [...c.messages, acceptMsg] }
-            : c,
-        ),
-      }));
-      return escrowId;
-    },
-    [registerAwaitingFundingDeal],
   );
 
   const addSavedSearch = useCallback((input: Omit<SavedSearchRecord, "id" | "createdAtIso">) => {
@@ -964,17 +781,12 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CommunicationsContextValue>(
     () => ({
       conversations: state.conversations,
-      engagements: state.engagements,
-      leads: state.leads,
       savedSearches,
       chatConnectionStatus,
       chatDebug,
       isRemoteConversation,
       postMessage,
       submitContactLead,
-      agentStartDealForConversation,
-      agentQuoteEngagement,
-      buyerAcceptEngagement,
       addSavedSearch,
       updateSavedSearch,
       deleteSavedSearch,
@@ -987,9 +799,6 @@ export function CommunicationsProvider({ children }: { children: ReactNode }) {
       isRemoteConversation,
       postMessage,
       submitContactLead,
-      agentStartDealForConversation,
-      agentQuoteEngagement,
-      buyerAcceptEngagement,
       addSavedSearch,
       updateSavedSearch,
       deleteSavedSearch,

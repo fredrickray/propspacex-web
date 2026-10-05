@@ -142,6 +142,7 @@ const AddPropertyReviewPage = () => {
           description,
           type: mapTypeToApi(property.type),
           status: mapStatusToApi(property.status),
+          purpose: property.purpose === "rent" ? "rent" : "sale",
           price: Number(property.price ?? 0),
           currency: mapCurrencyToApi(property.currency),
           location: {
