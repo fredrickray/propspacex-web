@@ -483,6 +483,27 @@ class ApiClient {
     );
   }
 
+  async approveProperty(id: string): Promise<unknown> {
+    return this.request(`/admin/properties/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  async rejectProperty(id: string, reason: string): Promise<unknown> {
+    return this.request(`/admin/properties/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async escalateProperty(id: string, note: string): Promise<unknown> {
+    return this.request(`/admin/properties/${id}/escalate`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
   async getPropertyById(
     id: string,
     options?: { skipAuthRedirect?: boolean },

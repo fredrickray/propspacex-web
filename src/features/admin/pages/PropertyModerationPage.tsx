@@ -19,6 +19,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { api, PropertyStatus } from "@/lib/api";
 import {
   getPropertyId,
@@ -26,13 +36,46 @@ import {
   parsePropertyListEnvelope,
 } from "@/lib/property-normalize";
 
+async function loadFlaggedListings() {
+  const [pending, available] = await Promise.all([
+    api.getProperties({ status: PropertyStatus.PENDING, page: 1, limit: 50 }),
+    api.getProperties({ status: PropertyStatus.AVAILABLE, page: 1, limit: 50 }),
+  ]);
+  const merged = [
+    ...parsePropertyListEnvelope(pending),
+    ...parsePropertyListEnvelope(available),
+  ];
+  const seen = new Set<string>();
+  return merged.filter((row) => {
+    const id = getPropertyId(row);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return matchesModerationTab(row, "flagged");
+  });
+}
+
+function matchesModerationTab(raw: unknown, tab: string) {
+  if (typeof raw !== "object" || raw === null) return false;
+  const row = raw as Record<string, unknown>;
+  const status = String(row.status ?? "").toLowerCase();
+  const flagged = row.flagged === true;
+  if (tab === "flagged") return flagged;
+  if (tab === "pending") return status === "pending";
+  if (tab === "approved") return status === "available";
+  return true;
+}
+
 export function PropertyModerationPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState<unknown[]>([]);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"approve" | "reject" | "escalate" | null>(null);
+  const [noteKind, setNoteKind] = useState<"reject" | "escalate" | null>(null);
+  const [note, setNote] = useState("");
   const requestRef = useRef(0);
 
   const load = useCallback(async () => {
@@ -40,15 +83,21 @@ export function PropertyModerationPage() {
     setLoading(true);
     setError(null);
     try {
-      if (activeTab === "flagged") {
-        if (requestId === requestRef.current) setAll([]);
-        return;
-      }
-      const status =
-        activeTab === "pending" ? PropertyStatus.PENDING : PropertyStatus.AVAILABLE;
-      const raw = await api.getProperties({ status, page: 1, limit: 50 });
+      const rows =
+        activeTab === "flagged"
+          ? await loadFlaggedListings()
+          : parsePropertyListEnvelope(
+              await api.getProperties({
+                status:
+                  activeTab === "pending"
+                    ? PropertyStatus.PENDING
+                    : PropertyStatus.AVAILABLE,
+                page: 1,
+                limit: 50,
+              }),
+            );
       if (requestId !== requestRef.current) return;
-      setAll(parsePropertyListEnvelope(raw));
+      setAll(rows.filter((row) => matchesModerationTab(row, activeTab)));
     } catch (e) {
       if (requestId !== requestRef.current) return;
       setError(
@@ -110,6 +159,68 @@ export function PropertyModerationPage() {
       };
     });
   }, [filtered]);
+
+  const moderation = useMemo(() => {
+    if (typeof selectedRaw !== "object" || selectedRaw === null) return null;
+    const row = selectedRaw as Record<string, unknown>;
+    return {
+      flagged: row.flagged === true,
+      flagNote: typeof row.flagNote === "string" ? row.flagNote.trim() : "",
+      rejectionReason:
+        typeof row.rejectionReason === "string" ? row.rejectionReason.trim() : "",
+    };
+  }, [selectedRaw]);
+
+  const approve = async () => {
+    if (!selectedId) return;
+    setBusy("approve");
+    try {
+      await api.approveProperty(selectedId);
+      toast({
+        title: "Listing approved",
+        description: "It is now available on the catalog.",
+      });
+      await load();
+    } catch (error) {
+      toast({
+        title: "Could not approve listing",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submitNote = async () => {
+    if (!selectedId || !noteKind) return;
+    const text = note.trim();
+    if (!text) return;
+    setBusy(noteKind);
+    try {
+      if (noteKind === "reject") {
+        await api.rejectProperty(selectedId, text);
+        toast({ title: "Listing rejected" });
+      } else {
+        await api.escalateProperty(selectedId, text);
+        toast({ title: "Listing escalated" });
+      }
+      setNoteKind(null);
+      setNote("");
+      await load();
+    } catch (error) {
+      toast({
+        title:
+          noteKind === "reject"
+            ? "Could not reject listing"
+            : "Could not escalate listing",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -181,7 +292,7 @@ export function PropertyModerationPage() {
           ) : queueForList.length === 0 ? (
             <div className="text-sm text-muted-foreground border border-border rounded-lg p-6 text-center">
               {activeTab === "flagged"
-                ? "Flagged listings will show here once the API returns a flagged field."
+                ? "No flagged listings."
                 : activeTab === "pending"
                   ? "No listings are waiting for review."
                   : "No live listings in this queue."}
@@ -243,9 +354,14 @@ export function PropertyModerationPage() {
                     Back to Dashboard
                   </span>
                 </div>
-                <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 capitalize">
-                  {selectedDetail.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 capitalize">
+                    {selectedDetail.status}
+                  </Badge>
+                  {moderation?.flagged ? (
+                    <Badge variant="outline">Flagged</Badge>
+                  ) : null}
+                </div>
               </div>
 
               <div className="p-4">
@@ -338,32 +454,103 @@ export function PropertyModerationPage() {
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {selectedDetail.description}
                 </p>
-
-                <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="max-w-md text-sm text-muted-foreground">
-                    Approve, reject, and escalate need admin routes on the API.
+                {moderation?.flagNote ? (
+                  <p className="text-sm text-muted-foreground">
+                    Escalation note: {moderation.flagNote}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" type="button" disabled>
-                      Escalate
-                    </Button>
-                    <Button variant="destructive" type="button" disabled>
-                      Reject
-                    </Button>
-                    <Button
-                      type="button"
-                      className="bg-green-600 hover:bg-green-700"
-                      disabled
-                    >
-                      Approve Listing
-                    </Button>
-                  </div>
+                ) : null}
+                {moderation?.rejectionReason ? (
+                  <p className="text-sm text-muted-foreground">
+                    Rejection reason: {moderation.rejectionReason}
+                  </p>
+                ) : null}
+
+                <div className="flex flex-wrap justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      setNote("");
+                      setNoteKind("escalate");
+                    }}
+                  >
+                    {busy === "escalate" ? "Saving…" : "Escalate"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      setNote("");
+                      setNoteKind("reject");
+                    }}
+                  >
+                    {busy === "reject" ? "Saving…" : "Reject"}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={busy !== null}
+                    onClick={() => void approve()}
+                  >
+                    {busy === "approve" ? "Saving…" : "Approve Listing"}
+                  </Button>
                 </div>
               </div>
             </>
           )}
         </div>
       </div>
+      <Dialog
+        open={noteKind !== null}
+        onOpenChange={(open) => {
+          if (open || busy) return;
+          setNoteKind(null);
+          setNote("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {noteKind === "reject" ? "Reject listing" : "Escalate listing"}
+            </DialogTitle>
+            <DialogDescription>
+              {noteKind === "reject"
+                ? "This reason is stored on the listing and sent with the rejection."
+                : "This note is stored on the listing and keeps it in review."}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={
+              noteKind === "reject" ? "Reason for rejection" : "Escalation note"
+            }
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy !== null}
+              onClick={() => {
+                setNoteKind(null);
+                setNote("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={noteKind === "reject" ? "destructive" : "default"}
+              disabled={!note.trim() || busy !== null}
+              onClick={() => void submitNote()}
+            >
+              {busy ? "Saving…" : noteKind === "reject" ? "Reject" : "Escalate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
