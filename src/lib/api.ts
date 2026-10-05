@@ -847,14 +847,31 @@ class ApiClient {
     return this.request(`/deals/${dealId}`);
   }
 
-  async createOrGetDeal(conversationId: string, propertyTitle?: string): Promise<unknown> {
+  async createOrGetDeal(
+    conversationId: string,
+    propertyTitle?: string,
+    source: "website" | "referral" | "social" | "portal" = "website",
+  ): Promise<unknown> {
     return this.request("/deals", {
       method: "POST",
       body: JSON.stringify({
         conversationId,
         propertyTitle: propertyTitle ?? "",
+        source,
       }),
     });
+  }
+
+  async recordPropertyView(id: string): Promise<void> {
+    await this.request(
+      `/properties/${encodeURIComponent(id)}/views`,
+      { method: "POST" },
+      { skipAuthRedirect: true },
+    );
+  }
+
+  async getAgentAnalytics(): Promise<unknown> {
+    return this.request("/agents/analytics");
   }
 
   async quoteDeal(

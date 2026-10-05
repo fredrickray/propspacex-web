@@ -12,6 +12,7 @@ export type RemoteDeal = {
   escrowId: string;
   createdAt: string;
   updatedAt: string;
+  source: string;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -51,6 +52,7 @@ export function toRemoteDeal(raw: unknown): RemoteDeal | null {
     escrowId: text(row.escrowId),
     createdAt: text(row.createdAt),
     updatedAt: text(row.updatedAt),
+    source: text(row.source) || "website",
   };
 }
 
