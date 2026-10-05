@@ -113,6 +113,7 @@ const PropertyDetailsPage = () => {
         setDetail(normalized);
         setGallery(getImageUrls(unwrapped));
         setActiveImageIndex(0);
+        void api.recordPropertyView(id).catch(() => undefined);
       } catch (e) {
         if (!cancelled) {
           setError(
