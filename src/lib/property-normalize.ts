@@ -20,6 +20,23 @@ export function parsePropertyListEnvelope(data: unknown): unknown[] {
   return [];
 }
 
+export function readListMeta(data: unknown): {
+  total: number | null;
+  page: number;
+  hasNextPage: boolean;
+} {
+  if (!isRecord(data)) return { total: null, page: 1, hasNextPage: false };
+  const pagination = isRecord(data.pagination) ? data.pagination : data;
+  const total =
+    typeof pagination.total === "number" ? pagination.total : null;
+  const page = typeof pagination.page === "number" ? pagination.page : 1;
+  return {
+    total,
+    page,
+    hasNextPage: pagination.hasNextPage === true,
+  };
+}
+
 /** Single-property responses: `{ property: {...} }` or `{ data: {...} }` */
 export function unwrapSingleProperty(data: unknown): unknown {
   if (!isRecord(data)) return data;
